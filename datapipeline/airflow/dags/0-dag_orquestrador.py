@@ -6,7 +6,7 @@ Bronze → Silver → Gold → Catalog, incluindo testes em cada camada.
 Se qualquer etapa falhar, o pipeline é interrompido.
 """
 from airflow import DAG
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.providers.standard.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 
 default_args = {
@@ -18,10 +18,10 @@ default_args = {
 }
 
 with DAG(
-    dag_id='pipeline_orquestrador',
+    dag_id='0_dag_orquestrador',
     default_args=default_args,
     description='Orquestra execução sequencial do pipeline Bronze → Silver → Gold → Catalog',
-    schedule_interval='0 6 * * *',  # Diariamente às 6h
+    schedule='0 6 * * *',  # Diariamente às 6h
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=['orquestrador', 'pipeline'],
@@ -30,7 +30,7 @@ with DAG(
     # Bronze: Ingestão
     trigger_bronze = TriggerDagRunOperator(
         task_id='trigger_bronze_ingestion',
-        trigger_dag_id='bronze_ingestion',
+        trigger_dag_id='1_bronze_ingestion',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -39,7 +39,7 @@ with DAG(
     # Bronze: Teste
     trigger_bronze_test = TriggerDagRunOperator(
         task_id='trigger_bronze_test',
-        trigger_dag_id='bronze_test',
+        trigger_dag_id='2_bronze_test',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -48,7 +48,7 @@ with DAG(
     # Silver: Transformação
     trigger_silver = TriggerDagRunOperator(
         task_id='trigger_silver_transformation',
-        trigger_dag_id='silver_transformation',
+        trigger_dag_id='3_silver_transformation',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -57,7 +57,7 @@ with DAG(
     # Silver: Teste
     trigger_silver_test = TriggerDagRunOperator(
         task_id='trigger_silver_test',
-        trigger_dag_id='silver_test',
+        trigger_dag_id='4_silver_test',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -66,7 +66,7 @@ with DAG(
     # Gold: Agregação
     trigger_gold = TriggerDagRunOperator(
         task_id='trigger_gold_aggregation',
-        trigger_dag_id='gold_aggregation',
+        trigger_dag_id='5_gold_aggregation',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -75,7 +75,7 @@ with DAG(
     # Gold: Teste
     trigger_gold_test = TriggerDagRunOperator(
         task_id='trigger_gold_test',
-        trigger_dag_id='gold_test',
+        trigger_dag_id='6_gold_test',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
@@ -84,7 +84,7 @@ with DAG(
     # Catalog: Catalogação
     trigger_catalog = TriggerDagRunOperator(
         task_id='trigger_catalog_metadata',
-        trigger_dag_id='catalog_metadata',
+        trigger_dag_id='7_catalog_metadata',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,

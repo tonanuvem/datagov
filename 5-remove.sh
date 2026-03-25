@@ -12,11 +12,11 @@ echo ""
 echo "Removendo volumes:"
 echo ""
 # Lista todos os volumes e remove cada um
-docker volume ls -q | grep relatoriosbi | while read volume; do
+docker volume ls -q | grep openmetadata | while read volume; do
   #echo "Removendo volume: $volume"
   docker volume rm "$volume"
 done
 echo ""
 
 #docker network rm app_net
-docker network rm datacatalog_app_net
+docker network rm openmetadata_app_net

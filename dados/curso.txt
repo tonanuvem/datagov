@@ -1,0 +1,200 @@
+MATRICULA,NOME,REPROVACOES_MAT_1,REPROVACOES_MAT_2,REPROVACOES_MAT_3,REPROVACOES_MAT_4,NOTA_MAT_1,NOTA_MAT_2,NOTA_MAT_3,NOTA_MAT_4,INGLES,H_AULA_PRES,TAREFAS_ONLINE,FALTAS,PERFIL
+502375,Márcia Illiglener,0,0,0,0,6.2,5.8,4.6,5.9,0.0,2,4,3,REGULAR
+397093,Jason Jytereoman Izoimum,0,0,0,0,6.0,6.2,5.2,4.5,1.0,2,4,3,REGULAR
+915288,Bartolomeu Inácio da Gama,0,0,0,0,7.3,6.7,7.1,7.2,0.0,5,0,3,BOM
+192652,Fernanda Guedes,1,3,1,1,0.0,0.0,0.0,0.0,1.0,4,4,4,DIFICULDADE
+949491,Alessandre Borba Gomes,1,3,1,1,0.0,0.0,0.0,0.0,1.0,5,2,5,DIFICULDADE
+627360,Magali Hellen Gejibaflião,0,0,0,0,7.3,7.4,7.6,6.5,1.0,5,3,5,BOM
+804493,Tiago Brisu Pires,0,0,0,0,5.8,6.0,7.3,5.1,1.0,5,2,6,DIFICULDADE
+433789,Andressa Gabrielle da Silva,0,0,0,0,4.9,5.0,5.9,4.6,,2,2,6,DIFICULDADE
+178335,Gilmar Oséas Etonvic,0,0,0,0,4.4,4.8,4.7,4.6,1.0,3,4,4,DIFICULDADE
+987229,Otávia Mônica Noopu,0,0,0,0,6.4,5.4,5.0,5.5,1.0,3,5,3,REGULAR
+382592,Matheus de Souza dos Pinhais,0,0,0,0,6.9,7.5,7.3,6.0,0.0,3,5,5,MUITO_BOM
+422026,Marcos de Rezende Espada Bakeu,3,1,1,1,0.0,0.0,0.0,0.0,,0,1,7,DIFICULDADE
+483227,Damares Mara Sobi,1,1,1,1,0.0,0.0,0.0,0.0,,7,5,5,DIFICULDADE
+816701,Vitor Ragi,3,1,1,1,0.0,0.0,0.0,,0.0,6,5,3,DIFICULDADE
+672601,Luiza Tahichi,1,3,1,1,0.0,0.0,0.0,0.0,,5,2,6,DIFICULDADE
+630347,Jaziel da Conceição,0,0,0,0,6.6,4.4,4.9,4.7,1.0,4,2,4,REGULAR
+559228,Celso de Pereira,0,0,0,0,6.1,4.7,6.5,5.3,0.0,4,5,3,REGULAR
+573688,Regina Conimman,0,0,0,0,5.5,5.1,6.2,4.7,1.0,2,3,6,REGULAR
+719970,Yasmin Lopes Gomes Dapitoe,0,0,0,0,6.7,6.5,7.0,5.6,1.0,7,5,3,BOM
+546151,Janete Vitória Gomes,0,0,0,0,5.4,5.2,5.0,5.8,1.0,1,3,5,REGULAR
+390727,Celso Mariano Hikurode,0,0,0,0,5.3,4.8,4.8,5.3,0.0,3,4,4,DIFICULDADE
+394721,Rosana Aznanão,0,0,0,0,7.0,7.4,7.3,7.0,,15,5,2,BOM
+506004,Sâmia Edilene Sayu de Meireles,0,0,0,0,8.0,8.4,10.0,8.5,0.0,10,6,2,EXCELENTE
+514791,Márcia Juliana de Castro,0,0,0,0,6.9,6.8,5.5,6.3,0.0,8,4,5,REGULAR
+656202,Wanda Rosa Weber,0,0,0,0,6.1,5.2,5.6,5.2,,4,5,3,REGULAR
+535203,Suely da Paraíba Tlanokivic,1,1,1,1,0.0,0.0,0.0,0.0,1.0,2,0,3,DIFICULDADE
+332396,Bóris Pedro de Ramos,0,0,0,0,7.2,7.4,8.1,,1.0,3,5,2,BOM
+617599,Walderice Yolanda Oiluer do Maranhão,0,0,0,0,4.5,4.9,5.5,,1.0,5,2,6,DIFICULDADE
+194445,Aécio Eric de Freitas Júnior,0,0,0,0,6.7,7.0,5.9,5.6,0.0,5,4,4,MUITO_BOM
+856103,Luara Idiz,0,0,0,0,6.2,6.0,5.0,4.3,1.0,5,3,6,DIFICULDADE
+644628,Kauê Sílvio Valverde,0,0,0,0,6.8,7.1,7.9,5.8,0.0,1,4,6,BOM
+983548,Samuel de Salgado,0,0,0,0,5.9,6.2,5.7,6.3,,3,3,4,REGULAR
+364403,Giovanni Freire Gomes,0,0,0,0,5.7,4.9,5.0,5.2,,5,1,3,DIFICULDADE
+261521,Eleriane Shingazyttes,0,0,0,0,6.8,5.9,6.7,6.2,0.0,4,2,3,BOM
+375701,Yolanda de Macedo dos Santos Valente,0,0,0,0,6.1,6.4,5.4,5.4,,2,2,6,DIFICULDADE
+148016,Daniela Itamara de Sá do Vale,0,0,0,0,6.0,6.2,5.4,6.4,1.0,2,4,4,REGULAR
+177301,Joaquim da Luz Pomyn Júnior,0,0,0,0,6.6,6.9,5.2,,,15,5,5,REGULAR
+556989,Wagner Guilherme de Salvador Eicli Nowason,0,0,0,0,6.4,5.7,5.0,,0.0,5,5,3,REGULAR
+185935,Augusto Esimdul Utre Júnior,0,0,0,0,7.3,7.2,7.6,,1.0,13,5,3,BOM
+608546,Albina Tina da Silva de Toledo Fiarne,0,0,0,0,6.6,6.0,6.5,6.2,1.0,2,0,3,REGULAR
+604099,Josiane Dara de Oliveira Yndube Kratroe Terceiro,0,0,0,0,7.3,8.1,7.1,7.5,0.0,3,5,2,MUITO_BOM
+520728,Marlene Tuseson,0,0,0,0,5.9,5.7,5.6,5.6,1.0,3,2,5,REGULAR
+775472,Paulo Jardel Alasov,1,1,1,1,0.0,0.0,0.0,0.0,0.0,6,0,3,DIFICULDADE
+275380,Fabíola Mayra de Bragança Eovic,0,0,0,0,4.7,5.9,5.0,4.5,1.0,5,1,7,DIFICULDADE
+516894,Maria da Silva,1,1,1,1,0.0,0.0,0.0,,1.0,2,3,3,DIFICULDADE
+420908,Keyla Adrielle Uzbo,0,0,0,0,5.5,5.2,7.5,5.4,1.0,9,4,4,BOM
+546263,Rebeca Karina Duque,0,0,0,0,6.5,5.9,5.4,4.8,1.0,0,3,5,REGULAR
+763764,Heron Miguel Baledro,0,0,1,1,4.7,5.1,0.0,0.0,1.0,3,3,5,DIFICULDADE
+970726,Suely Elaine Aenammi,0,0,0,0,5.5,6.2,6.0,5.8,1.0,5,6,6,REGULAR
+950310,Poliana Marina Pinto Hoa de Jesus,0,0,0,0,6.8,6.2,7.1,6.4,0.0,9,3,4,MUITO_BOM
+610884,Matilde Milani de Souza Clossze,0,0,0,0,6.2,5.5,4.9,4.3,0.0,7,2,3,REGULAR
+419994,Otávio Barnabé Batsu de Meireles,0,0,0,0,6.5,6.7,7.3,5.3,0.0,3,0,3,BOM
+346568,Victor Marciano Gomes de Figueiredo,0,0,0,0,6.2,6.2,4.8,6.0,0.0,10,5,1,DIFICULDADE
+785039,Augusto de Gusmões,0,0,0,0,6.0,5.3,4.9,5.0,1.0,1,2,6,DIFICULDADE
+336386,Lara do Espírito Santo de Peres,0,0,0,0,4.9,5.2,5.5,5.7,1.0,0,2,1,REGULAR
+472125,Karl dos Santos,1,1,1,3,0.0,0.0,0.0,0.0,1.0,2,2,5,DIFICULDADE
+120982,Bárbara Jandira da Silva Crerol Lopes,0,0,0,0,7.6,7.2,6.8,6.4,1.0,3,0,3,BOM
+173762,Gilmara de Guimarães Mendes,0,0,0,0,5.7,4.3,5.7,,1.0,0,0,8,REGULAR
+133076,Sílvia Jangada,1,1,1,1,0.0,0.0,0.0,0.0,0.0,21,6,2,DIFICULDADE
+244232,João Ricardo Gomes,0,0,1,1,5.2,4.9,0.0,0.0,1.0,3,2,6,DIFICULDADE
+432793,Sâmia Rose de Trindade,0,0,0,0,5.2,5.2,5.9,,,2,4,4,DIFICULDADE
+727230,Wilma de Sampaio Irno,0,0,0,0,6.1,5.5,5.1,5.6,1.0,0,2,6,REGULAR
+121294,Joelma de Pereira,0,0,0,0,7.4,6.6,5.7,,1.0,0,5,3,REGULAR
+683121,Filipe Alex Noinbo Pinhão,0,0,0,0,6.8,7.4,8.7,7.6,,2,5,3,MUITO_BOM
+232491,Cléber Heron de Amorim Yatsuta Fragoso,1,1,1,1,0.0,0.0,0.0,0.0,,1,0,6,DIFICULDADE
+782070,Luiza Cavalcante,0,0,0,0,6.4,5.5,4.9,6.2,1.0,5,0,3,DIFICULDADE
+823254,Osvaldo Fagner Quiscubri da Silva Droa Júnior,0,0,0,0,6.0,5.8,4.9,,1.0,6,3,5,REGULAR
+209033,Mara Jeniffer de Linhares,0,0,0,0,6.5,6.0,6.9,6.2,0.0,8,0,1,BOM
+196963,Edson de Tozetto dos Santos,0,0,0,0,6.1,5.8,5.3,,1.0,7,2,4,DIFICULDADE
+321072,Clara Solange Rodrigues de Barros Terceiro,0,0,0,0,6.7,6.7,6.8,6.3,,4,3,4,BOM
+449186,Laura Branco Vunnião,0,0,0,0,6.6,4.7,5.6,4.4,1.0,1,3,5,REGULAR
+354651,Gabriel Netsuji,0,0,0,0,6.1,4.6,4.7,5.1,0.0,7,5,3,REGULAR
+743378,Otaviano Gomes Júnior,0,0,0,0,6.1,6.5,4.6,5.0,1.0,0,2,3,REGULAR
+481412,Robert Pires,1,1,1,1,0.0,0.0,0.0,,,3,3,6,DIFICULDADE
+176810,Keyla Karina de Barbosa,0,0,3,1,4.7,4.8,0.0,0.0,,3,5,5,DIFICULDADE
+228605,Martin Igreja Terceiro,0,0,0,0,6.2,6.0,4.9,6.3,1.0,3,2,2,REGULAR
+748596,Priscila Marcela Geshisene,0,0,0,0,7.5,7.3,8.1,6.0,0.0,4,5,3,BOM
+916770,Willian Owoer Neto,0,0,0,0,7.1,6.2,7.7,,0.0,2,5,3,BOM
+458344,Alessandra Ossal de Alvarenga,0,0,0,0,7.6,7.7,7.9,,1.0,17,7,2,MUITO_BOM
+349438,Leonara de Souza da Silva dos Reis,0,0,0,0,5.7,5.6,5.2,5.7,1.0,2,5,3,DIFICULDADE
+572626,Rosilda Selena Migoyo,0,0,0,0,5.2,5.0,4.6,5.0,0.0,4,0,4,REGULAR
+694666,Celina Lígia da Silva,0,0,0,0,6.4,5.9,6.5,4.7,1.0,9,2,3,REGULAR
+705401,Adônis Walter da Silva,0,0,0,0,7.1,6.5,5.9,,0.0,4,3,6,REGULAR
+652794,Zilda Marli de Oliveira Aelaz,0,0,0,0,7.1,7.0,8.3,7.8,0.0,5,4,2,BOM
+997787,Vinícius de Pereira,0,0,0,0,5.9,6.4,7.5,4.6,1.0,5,2,4,MUITO_BOM
+384711,Nelson Emílio Freire Gobido,1,1,1,1,0.0,0.0,0.0,0.0,0.0,7,7,4,DIFICULDADE
+545750,Rebeca Regina de Ortega Vempi,0,0,0,0,7.1,7.3,7.3,7.1,0.0,4,5,3,BOM
+148616,Albano Orlando de Linhares,1,3,3,1,0.0,0.0,0.0,0.0,1.0,5,3,5,DIFICULDADE
+794432,Patrícia de Álvares,0,0,0,0,6.3,5.3,6.7,5.9,,3,2,6,BOM
+754217,Poliana de Paranhos Marinho,1,1,1,1,0.0,0.0,0.0,0.0,1.0,5,5,5,DIFICULDADE
+771850,Leopoldo de Pacheco Barroso,1,1,1,3,0.0,0.0,0.0,0.0,,2,1,5,DIFICULDADE
+410346,Ronaldo Moisés Ocrozvyman Júnior,0,0,0,0,5.4,6.2,5.3,4.6,1.0,2,3,5,DIFICULDADE
+259804,João Quazoesman Ribeiro,0,0,0,0,6.3,4.9,6.7,6.3,1.0,3,4,3,BOM
+824374,Gabriel Kuyuoha de Britto Júnior,0,0,0,0,6.6,6.1,6.0,,,4,4,3,REGULAR
+122981,Úrsula Zulmira de Medeiros,0,0,0,0,6.5,4.3,5.8,5.9,1.0,3,5,6,REGULAR
+563881,Lívia de Aguiar,0,0,0,0,5.5,6.2,5.3,5.3,1.0,5,3,7,REGULAR
+790640,Maíra Eunice da Silva Toritoza,0,0,0,0,7.1,6.4,6.4,,1.0,5,2,6,REGULAR
+366054,Elói Geraldo da Silva,0,0,0,0,5.8,5.8,4.9,5.3,1.0,2,5,3,REGULAR
+946190,Luciano Laércio Onupison Klein,1,1,1,1,0.0,0.0,0.0,0.0,0.0,3,1,7,DIFICULDADE
+633420,Laís de Souza Pimenta,0,0,0,0,6.6,6.0,5.3,5.3,0.0,2,0,8,REGULAR
+974420,Hilda Fernanda dos Santos,1,1,1,1,0.0,0.0,0.0,0.0,,7,5,3,DIFICULDADE
+681625,Ingrid de França,0,0,0,0,5.4,5.8,5.5,4.4,1.0,3,2,5,DIFICULDADE
+179657,Maria Kuumusu de Mendonça Linbre,1,1,1,1,0.0,0.0,0.0,0.0,0.0,2,0,8,DIFICULDADE
+420374,Edinaldo Elias Werner,0,0,0,0,6.9,7.4,6.9,5.7,,13,6,3,BOM
+527716,Priscila de Drummond,0,0,0,0,7.9,7.2,9.4,7.9,1.0,12,5,4,EXCELENTE
+238401,Raí Nathan de Alvim Omcydi Brasil,1,1,3,3,0.0,0.0,0.0,0.0,1.0,4,5,6,DIFICULDADE
+276270,Eulália Rose Brale de Paiva,0,0,0,0,6.7,6.9,8.8,7.2,0.0,14,6,2,BOM
+656672,Martin Gilson Mepi de Souza Rulasteges,0,0,0,0,6.2,5.6,5.6,5.8,1.0,2,1,6,REGULAR
+920238,Sheila Tainá Klein,0,0,0,0,6.9,7.2,6.2,5.3,1.0,2,5,5,REGULAR
+981095,Everaldo de Sampaio Shimibize Ualã Neto,0,0,0,0,7.2,7.1,7.7,5.8,0.0,5,2,3,BOM
+430665,Celso de Ferraz,0,0,0,0,5.8,4.9,5.4,4.6,1.0,1,2,6,DIFICULDADE
+274035,Suellen Podazmu de Junqueira,0,0,0,0,7.2,7.1,6.5,,0.0,8,4,5,REGULAR
+865260,Gisele de Antunes da Silva Noda,0,0,1,1,4.9,5.4,0.0,0.0,0.0,3,0,8,DIFICULDADE
+665507,Uribe César Bamornny,1,1,1,1,0.0,0.0,0.0,0.0,0.0,2,3,4,DIFICULDADE
+248106,Samanta Milene dos Santos,1,1,1,1,0.0,0.0,0.0,0.0,1.0,3,0,6,DIFICULDADE
+854815,Vanda Oirn Trevisan,0,0,0,0,6.1,6.9,7.6,,0.0,5,3,5,BOM
+256055,Edivaldo Sebastião Lopes Júnior,0,0,0,0,5.5,6.6,7.6,5.8,,7,0,3,BOM
+917746,Aline Coeo de Albuquerque Ribeiro,0,0,0,0,6.5,7.1,6.8,7.0,0.0,3,4,4,BOM
+859689,Edinaldo Gomes Tauean,0,0,0,0,4.3,5.9,6.9,5.5,,4,0,4,BOM
+983487,Ismael Mateus de Matos Oiuã,0,0,0,0,6.3,5.2,6.9,5.2,1.0,5,3,3,BOM
+720646,Fernanda de Ferreira,0,0,0,0,6.5,5.1,5.3,5.2,1.0,2,3,5,REGULAR
+446070,Gilberto Jacinto de Teixeira,1,1,1,1,0.0,0.0,0.0,0.0,1.0,1,3,6,DIFICULDADE
+171680,Leni de Sampaio Peufala,1,3,1,3,0.0,0.0,0.0,0.0,0.0,5,4,5,DIFICULDADE
+894529,Benjamin Itamar da Silva Lovo,1,3,3,3,0.0,0.0,0.0,0.0,,4,5,3,DIFICULDADE
+116148,Regina Léia de Diniz,0,0,0,0,6.5,6.2,5.7,4.9,1.0,4,4,4,REGULAR
+444277,Célia Zauke de Pereira da Encarnação,0,0,0,0,5.8,5.6,6.4,5.5,0.0,4,4,3,DIFICULDADE
+498557,Otto do Piauí de Alvim Júnior,0,0,0,0,5.8,5.2,5.6,5.0,1.0,2,2,3,REGULAR
+388985,Karl Washington Acliauão Ruzeiz,0,0,0,0,6.4,6.7,5.0,5.5,,3,0,8,REGULAR
+814672,Rose Valeska de Figueira dos Santos,0,0,0,0,6.5,5.6,6.6,6.1,1.0,0,2,5,BOM
+782898,Demilson de Lemos do Amazonas Júnior,0,0,1,1,6.8,6.1,0.0,0.0,1.0,4,5,3,DIFICULDADE
+531945,Cristiane dos Santos,0,0,0,0,5.1,4.5,4.5,4.5,,3,5,3,DIFICULDADE
+357174,Rosa Renata Agodravic,0,0,0,0,6.8,6.5,7.3,5.0,1.0,4,6,4,BOM
+808430,Laís Rosatto,1,1,1,1,0.0,0.0,0.0,,1.0,8,0,3,DIFICULDADE
+664269,Jéssica Xilena de Vargas,1,1,3,3,0.0,0.0,0.0,0.0,1.0,3,4,3,DIFICULDADE
+453165,Matheus Marco Ketebu de Mendonça,0,0,1,1,4.9,5.2,0.0,0.0,1.0,3,2,6,DIFICULDADE
+678364,Anne Marlene Freire de Vasconcelos,0,0,0,0,5.8,5.5,4.9,5.3,1.0,8,2,6,DIFICULDADE
+342822,Valeska Violeta Begupuho de Rezende,0,0,0,0,6.4,5.7,6.8,,1.0,3,3,5,BOM
+562494,Maria Valeska Ornrupeã,0,0,0,0,7.1,7.5,6.6,6.5,1.0,6,4,6,MUITO_BOM
+278495,Benjamin Gozuchi Paim,0,0,0,0,5.3,6.2,5.7,5.4,1.0,16,0,1,REGULAR
+957837,Mariano Jairo Arorn Coutinho,0,0,0,0,6.9,6.6,5.6,,1.0,4,0,8,REGULAR
+769531,Olavo Bopoão,0,0,0,0,6.5,6.7,5.4,5.1,,2,2,6,REGULAR
+741916,José Davi Abui de Lacerda,0,0,0,0,6.1,5.9,7.0,5.3,1.0,5,5,3,BOM
+682048,Gilson de Diniz Gutierrez,0,0,0,0,6.0,5.4,6.7,4.6,,5,5,4,DIFICULDADE
+656192,Susan de Tavares Dias Torres,0,0,0,0,6.4,5.8,6.0,6.1,,2,2,5,REGULAR
+143151,Heloísa Eliomar de Fonseca,1,1,1,1,0.0,0.0,0.0,,1.0,1,2,6,DIFICULDADE
+311948,Anne Celina de Paiva,0,0,0,0,6.4,5.8,5.4,,1.0,3,2,6,DIFICULDADE
+489139,Eliane de Rezende,0,0,0,0,5.5,5.5,5.5,5.3,1.0,13,2,3,REGULAR
+153614,Jason Augusto de Salvador,3,3,1,1,0.0,0.0,0.0,0.0,,3,5,4,DIFICULDADE
+721684,Monique Naves Weber,0,0,0,0,6.7,6.8,5.6,6.2,0.0,5,1,7,REGULAR
+264469,Luan Benjamin de Souza,0,0,0,0,6.4,7.1,5.3,6.5,0.0,8,5,3,REGULAR
+447338,Monique de Pereira Barroso,0,0,0,0,7.1,6.9,5.6,,1.0,5,7,3,REGULAR
+405545,Walderice Borba,1,3,1,1,0.0,0.0,0.0,0.0,1.0,3,1,3,DIFICULDADE
+466888,Yeda Roberta Trevisan,0,0,0,0,6.2,5.6,5.4,6.0,1.0,5,2,3,REGULAR
+313990,Abigail Denise de Abreu,0,0,0,0,5.6,5.1,5.1,5.3,,2,1,7,REGULAR
+600677,Samara Islil de Salvador,0,0,0,0,5.8,6.8,6.3,5.5,0.0,3,6,3,REGULAR
+365884,Sâmia do Espírito Santo da Silva,0,0,0,0,6.6,7.2,6.1,7.1,0.0,5,5,2,REGULAR
+896512,Jonathan Jacinto dos Santos de Pereira,0,0,0,0,5.9,6.0,6.0,,1.0,5,0,6,DIFICULDADE
+242935,Oliver Franco Neto,0,0,0,0,5.8,6.9,5.1,7.1,1.0,2,2,5,REGULAR
+215443,Ricardo Jair de Lins dos Santos,0,0,0,0,6.3,5.1,6.2,5.2,1.0,6,5,2,REGULAR
+479858,Bóris Unoneirn,0,0,0,0,5.3,4.2,5.7,4.6,0.0,4,2,5,DIFICULDADE
+182198,Daniel Chico de Brandão da Conceição,0,0,0,0,5.6,5.3,4.6,5.6,0.0,4,2,6,DIFICULDADE
+751223,Fernanda Lili Revoson,0,0,0,0,6.1,6.3,5.1,5.4,1.0,2,4,4,REGULAR
+316438,Ezequiel Raí Obrolan,0,0,0,0,7.3,7.3,7.4,6.4,1.0,5,4,5,MUITO_BOM
+578987,Arnaldo Euson da Silva,0,0,1,1,6.7,6.7,0.0,0.0,1.0,2,0,3,DIFICULDADE
+687092,Michele Sônia Gutierrez,0,0,0,0,6.0,5.6,6.3,5.6,,4,3,3,REGULAR
+928838,Damares da Silva,0,0,0,0,5.1,5.5,5.0,,1.0,3,1,3,DIFICULDADE
+449477,Christie Jeniffer Baawaba Rane Nta,0,0,0,0,8.6,8.3,8.8,,0.0,17,6,1,EXCELENTE
+297474,Christie Buarque de Oliveira Naves,0,0,0,0,7.3,7.0,8.5,,1.0,5,2,1,BOM
+223963,Álvaro Portugal Trevisan,0,0,0,0,4.8,6.0,4.7,,1.0,2,0,8,REGULAR
+572706,Rosilda Ityman,0,0,0,0,6.8,5.8,5.4,,1.0,3,4,4,REGULAR
+819040,Luiza Góis Zikra de Oliva,0,0,0,0,5.6,5.9,4.9,5.4,0.0,3,2,3,DIFICULDADE
+916699,Leonara dos Santos,3,1,1,1,0.0,0.0,0.0,0.0,1.0,6,2,6,DIFICULDADE
+275950,Gislaine de Soares Ipil Pohepupo,0,0,0,0,7.4,8.1,6.4,7.2,1.0,3,5,1,REGULAR
+111466,Michel Israel Omvon Chioulão,0,0,0,0,5.8,5.6,4.8,4.8,,2,2,5,DIFICULDADE
+988513,Liane Zulmira do Rio de Pereira,0,0,0,0,6.4,5.9,5.4,,1.0,2,3,5,REGULAR
+274830,Willian Gabriel Ombivic do Prado,0,0,0,0,6.2,5.9,5.9,4.9,1.0,3,2,4,DIFICULDADE
+589648,Robson de Aguiar Jichipato,1,1,3,1,0.0,0.0,0.0,0.0,,14,2,1,DIFICULDADE
+189509,Ivan Fagner de Junqueira Imbuião Júnior,0,0,0,0,6.8,6.4,5.9,6.1,,12,5,3,REGULAR
+380169,Jonathan de Pereira Broldasornvic,1,1,1,1,0.0,0.0,0.0,0.0,1.0,4,2,6,DIFICULDADE
+805664,Janete Lúcia de Barbosa Egri do Piauí,0,0,0,0,6.1,6.0,6.2,5.9,1.0,5,1,6,REGULAR
+609915,Paulínia Celeste Pinhão Crobroezman de Paiva,0,0,0,0,7.3,7.7,8.2,8.0,0.0,10,5,3,BOM
+782851,Paula Elsyz,0,0,0,0,6.3,6.6,5.6,5.5,0.0,1,2,7,REGULAR
+683384,Cícero do Prado Júnior,0,0,0,0,7.1,6.0,6.7,6.6,0.0,11,5,3,BOM
+751466,Nicolas Roberto de Nogueira,0,0,0,0,6.0,5.9,5.9,5.2,0.0,2,2,3,DIFICULDADE
+223470,André de Oliva Neto,0,0,0,0,6.4,6.4,5.6,5.8,,2,4,5,REGULAR
+919882,Bruna Dina de Barboza da Gama,0,0,0,0,7.3,7.4,6.7,6.5,0.0,13,5,4,BOM
+509816,Alessandra Laís de Cabral,0,0,0,0,6.7,6.4,4.8,5.6,,4,2,3,REGULAR
+499936,Olavo Cleberson Milani de Álvares Júnior,0,0,3,1,4.8,5.2,0.0,,1.0,2,5,4,DIFICULDADE
+686972,Marco de Souza Driynison,0,0,0,0,6.4,5.4,4.5,4.9,1.0,4,5,3,REGULAR
+562624,Poliana da Paz Teles,0,0,0,0,6.4,5.9,6.9,,1.0,3,2,3,BOM
+627850,Vera Heloísa de Carvalho da Silva,0,0,0,0,7.9,8.1,7.2,6.6,1.0,4,0,3,BOM
+281174,Eleriane Isaiane de Sampaio da Silva,1,1,1,1,0.0,0.0,0.0,0.0,1.0,8,5,3,DIFICULDADE
+806648,Ariana Samanta de Barbosa,0,0,0,0,4.6,5.3,6.7,4.6,1.0,9,2,2,DIFICULDADE
+338318,Filipe de Martins Tlasi Aelu,0,0,0,0,5.4,4.6,5.3,5.7,1.0,2,0,3,DIFICULDADE
+882962,Sílvio Miguel dos Reis Nunes,0,0,0,0,6.4,6.3,7.4,,0.0,3,2,6,BOM
+971089,Rafaela Naves Pima Glaiov,0,0,0,0,7.1,6.5,5.3,6.2,0.0,2,2,6,REGULAR
+621598,Rita Gaeman,1,1,1,1,0.0,0.0,0.0,0.0,1.0,2,2,6,DIFICULDADE
+611915,Cecília Cícera do Piauí de Machado,0,0,0,0,6.9,6.6,6.1,,0.0,5,0,4,REGULAR
+160124,Clara de Garcia,0,0,0,0,7.1,7.3,6.2,6.2,0.0,3,2,4,REGULAR

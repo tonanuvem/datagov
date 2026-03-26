@@ -28,8 +28,12 @@ services:
     ports:
       - "5432:5432"
     volumes:
-     - ./docker-volume/db-data-postgres:/var/lib/postgresql/data
-    
+     - type: bind
+       source: ./docker-volume/db-data-postgres
+       target: /var/lib/postgresql/data
+       bind:
+         create_host_path: true
+    user: "999:999"
     networks:
       - app_net
     healthcheck:
@@ -56,7 +60,12 @@ services:
       timeout: 10s
       retries: 10
     volumes:
-      - es-data:/usr/share/elasticsearch/data
+      - type: volume
+        source: es-data
+        target: /usr/share/elasticsearch/data
+        volume:
+          nocopy: false
+    user: "1000:1000"
 
   execute-migrate-all:
     container_name: execute_migrate_all
@@ -550,10 +559,25 @@ services:
     networks:
       - app_net
     volumes:
-      - ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
-      - ingestion-volume-tmp:/tmp
-      - /home/ec2-user/datagov/datapipeline/airflow/dags:/opt/airflow/dags
-      - /home/ec2-user/datagov/dados:/opt/nb
+      - type: volume
+        source: ingestion-volume-dag-airflow
+        target: /opt/airflow/dag_generated_configs
+      - type: volume
+        source: ingestion-volume-tmp
+        target: /tmp
+      - type: bind
+        source: /home/ec2-user/datagov/datapipeline/airflow/dags
+        target: /opt/airflow/dags
+        read_only: false
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /home/ec2-user/datagov/dados
+        target: /opt/nb
+        read_only: false
+        bind:
+          create_host_path: true
+    user: "50000:0"
 
 networks:
   app_net:

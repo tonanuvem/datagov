@@ -8,7 +8,7 @@ OUTPUT: /dados/gold/kpis_dashboard.csv, /dados/gold/analise_risco.csv,
         /dados/gold/analise_engajamento.csv, /dados/gold/insights.csv
 """
 from airflow.sdk import dag, task
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import os
 
@@ -23,7 +23,7 @@ import os
 )
 def gold_pipeline():
     
-    @task(task_id='generate_kpis')
+    @task(task_id='generate_kpis', execution_timeout=timedelta(minutes=2, seconds=30))
     def generate_kpis():
         """Gera KPIs principais para dashboard"""
         print("=== GERANDO KPIs DASHBOARD ===")
@@ -98,7 +98,7 @@ def gold_pipeline():
             print(error_msg)
             raise Exception(error_msg)
     
-    @task(task_id='generate_risk_analysis')
+    @task(task_id='generate_risk_analysis', execution_timeout=timedelta(minutes=2, seconds=30))
     def generate_risk_analysis():
         """Gera análise de risco dos alunos"""
         print("=== GERANDO ANÁLISE DE RISCO ===")
@@ -171,7 +171,7 @@ def gold_pipeline():
             print(error_msg)
             raise Exception(error_msg)
     
-    @task(task_id='generate_engagement_analysis')
+    @task(task_id='generate_engagement_analysis', execution_timeout=timedelta(minutes=2, seconds=30))
     def generate_engagement_analysis():
         """Gera análise de engajamento dos alunos"""
         print("=== GERANDO ANÁLISE DE ENGAJAMENTO ===")
@@ -236,7 +236,7 @@ def gold_pipeline():
             print(error_msg)
             raise Exception(error_msg)
     
-    @task(task_id='generate_insights')
+    @task(task_id='generate_insights', execution_timeout=timedelta(minutes=2, seconds=30))
     def generate_insights():
         """Gera insights para melhorias"""
         print("=== GERANDO INSIGHTS ===")
@@ -306,10 +306,10 @@ def gold_pipeline():
             print(error_msg)
             raise Exception(error_msg)
     
-    # Definir dependências
-    kpis = generate_kpis()
-    risk = generate_risk_analysis()
-    engagement = generate_engagement_analysis()
-    insights = generate_insights()
+    # Executar tasks em paralelo (todas leem o mesmo arquivo)
+    generate_kpis()
+    generate_risk_analysis()
+    generate_engagement_analysis()
+    generate_insights()
 
 gold_pipeline()

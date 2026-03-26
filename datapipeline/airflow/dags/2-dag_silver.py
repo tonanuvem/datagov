@@ -7,7 +7,7 @@ INPUTS: /dados/bronze/alunos_raw.csv
 OUTPUT: /dados/silver/alunos_transformado.csv
 """
 from airflow.sdk import dag, task
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 import os
@@ -23,7 +23,7 @@ import os
 )
 def silver_pipeline():
     
-    @task(task_id='transform_data')
+    @task(task_id='transform_data', execution_timeout=timedelta(minutes=5))
     def transform_data():
         """Executa transformações e limpeza dos dados"""
         print("=== INICIANDO TRANSFORMAÇÃO SILVER ===")

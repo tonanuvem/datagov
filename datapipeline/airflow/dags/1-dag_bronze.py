@@ -7,7 +7,7 @@ INPUTS: /dados/curso.txt
 OUTPUT: /dados/bronze/alunos_raw.csv
 """
 from airflow.sdk import dag, task
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import os
 
@@ -22,7 +22,7 @@ import os
 )
 def bronze_pipeline():
     
-    @task(task_id='ingest_raw_data')
+    @task(task_id='ingest_raw_data', execution_timeout=timedelta(minutes=2, seconds=30))
     def ingest_raw_data():
         """Ingere dados brutos do arquivo curso.txt para a camada Bronze"""
         print("=== INICIANDO INGESTÃO BRONZE ===")

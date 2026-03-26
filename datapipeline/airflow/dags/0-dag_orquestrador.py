@@ -15,6 +15,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 0,
+    'execution_timeout': timedelta(hours=1),
 }
 
 with DAG(
@@ -32,7 +33,7 @@ with DAG(
         task_id='trigger_bronze_ingestion',
         trigger_dag_id='1_bronze_ingestion',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
@@ -41,7 +42,7 @@ with DAG(
         task_id='trigger_bronze_test',
         trigger_dag_id='2_bronze_test',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
@@ -50,7 +51,7 @@ with DAG(
         task_id='trigger_silver_transformation',
         trigger_dag_id='3_silver_transformation',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
@@ -59,7 +60,7 @@ with DAG(
         task_id='trigger_silver_test',
         trigger_dag_id='4_silver_test',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
@@ -68,7 +69,7 @@ with DAG(
         task_id='trigger_gold_aggregation',
         trigger_dag_id='5_gold_aggregation',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
@@ -77,27 +78,27 @@ with DAG(
         task_id='trigger_gold_test',
         trigger_dag_id='6_gold_test',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
-    # Catalog: Catalogação
+    # Catalog: Catalogação (paralelo)
     trigger_catalog_csv_local = TriggerDagRunOperator(
         task_id='trigger_catalog_csv_local',
         trigger_dag_id='7_catalog_csv_local',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
-    # Catalog: Catalogação
     trigger_catalog_openmetadata = TriggerDagRunOperator(
         task_id='trigger_catalog_openmetadata',
         trigger_dag_id='7_catalog_openmetadata',
         wait_for_completion=True,
-        poke_interval=30,
+        poke_interval=10,
         reset_dag_run=True,
     )
 
-    # Definir sequência de execução
-    trigger_bronze >> trigger_bronze_test >> trigger_silver >> trigger_silver_test >> trigger_gold >> trigger_gold_test >> trigger_catalog_csv_local >> trigger_catalog_openmetadata
+    # Definir sequência de execução (catalogação em paralelo)
+    trigger_bronze >> trigger_bronze_test >> trigger_silver >> trigger_silver_test >> trigger_gold >> trigger_gold_test
+    trigger_gold_test >> [trigger_catalog_csv_local, trigger_catalog_openmetadata]

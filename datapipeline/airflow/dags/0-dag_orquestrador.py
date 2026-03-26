@@ -82,13 +82,22 @@ with DAG(
     )
 
     # Catalog: Catalogação
-    trigger_catalog = TriggerDagRunOperator(
-        task_id='trigger_catalog_metadata',
-        trigger_dag_id='7_catalog_metadata',
+    trigger_catalog_csv_local = TriggerDagRunOperator(
+        task_id='trigger_catalog_csv_local',
+        trigger_dag_id='7_catalog_csv_local',
+        wait_for_completion=True,
+        poke_interval=30,
+        reset_dag_run=True,
+    )
+
+    # Catalog: Catalogação
+    trigger_catalog_openmetadata = TriggerDagRunOperator(
+        task_id='trigger_catalog_openmetadata',
+        trigger_dag_id='7_catalog_openmetadata',
         wait_for_completion=True,
         poke_interval=30,
         reset_dag_run=True,
     )
 
     # Definir sequência de execução
-    trigger_bronze >> trigger_bronze_test >> trigger_silver >> trigger_silver_test >> trigger_gold >> trigger_gold_test >> trigger_catalog
+    trigger_bronze >> trigger_bronze_test >> trigger_silver >> trigger_silver_test >> trigger_gold >> trigger_gold_test >> trigger_catalog_csv_local >> trigger_catalog_openmetadata

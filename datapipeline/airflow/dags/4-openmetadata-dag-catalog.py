@@ -4,16 +4,17 @@ Registra tabelas, linhagem, tags, owners, descrições e executa profiling
 para todas as camadas do pipeline medallion (bronze, silver, gold).
 
 Ordem de execução:
-  1. registrar_tabelas       → cria/atualiza tabelas com schema completo
-  2. registrar_lineage       → bronze → silver → gold (4 tabelas gold)
-  3. aplicar_governanca      → domínio, owner, tags PII, descrições
-  4. executar_profiling      → alimenta a aba Observabilidade
+  1. criar_servico_schema    → cria serviço e schema se não existirem
+  2. registrar_tabelas       → cria/atualiza tabelas com schema completo
+  3. registrar_lineage       → bronze → silver → gold (4 tabelas gold)
+  4. aplicar_governanca      → domínio, owner, tags PII, descrições
   5. registrar_glossario     → termos de negócio vinculados às colunas
 """
 
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 
 from airflow import DAG
@@ -21,9 +22,9 @@ from airflow.operators.python import PythonOperator
 
 # ─── Configuração de conexão ─────────────────────────────────────────────────
 
-OM_HOST      = "http://openmetadata:8585/api"   # ajuste para seu host
-OM_JWT_TOKEN = "<SEU_JWT_TOKEN>"                # gerado em Settings > Bots
-OM_SERVICE   = "pipeline-alunos"               # nome do serviço CSV/File no OM
+OM_HOST      = "http://openmetadata-server:8585/api"
+OM_JWT_TOKEN = os.getenv("OPENMETADATA_JWT_TOKEN")
+OM_SERVICE   = "pipeline_alunos"
 OM_DATABASE  = "educacao"
 OM_SCHEMA    = "medallion"
 
@@ -53,6 +54,81 @@ def get_metadata_client():
     return OpenMetadata(server_config)
 
 
+# ─── Task 0: Criar serviço e schema ───────────────────────────────────────────
+
+def criar_servico_schema(**context):
+    """Cria o serviço CustomDatabase e schema se não existirem."""
+    from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceRequest
+    from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+    from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
+    from metadata.generated.schema.entity.services.databaseService import (
+        DatabaseService,
+        DatabaseServiceType,
+        DatabaseConnection,
+    )
+    from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+        CustomDatabaseConnection,
+    )
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.type.entityReference import EntityReference
+
+    metadata = get_metadata_client()
+
+    # Criar serviço
+    try:
+        service = metadata.get_by_name(entity=DatabaseService, fqn=OM_SERVICE)
+        if not service:
+            service_request = CreateDatabaseServiceRequest(
+                name=OM_SERVICE,
+                serviceType=DatabaseServiceType.CustomDatabase,
+                connection=DatabaseConnection(
+                    config=CustomDatabaseConnection(
+                        type="CustomDatabase",
+                        sourcePythonClass="metadata.ingestion.source.database.customdatabase.metadata.CustomDatabaseSource",
+                    )
+                ),
+            )
+            service = metadata.create_or_update(service_request)
+            log.info("Serviço criado: %s", OM_SERVICE)
+        else:
+            log.info("Serviço já existe: %s", OM_SERVICE)
+    except Exception as e:
+        log.warning("Erro ao criar serviço: %s", e)
+
+    # Criar database
+    try:
+        database = metadata.get_by_name(entity=Database, fqn=f"{OM_SERVICE}.{OM_DATABASE}")
+        if not database:
+            db_request = CreateDatabaseRequest(
+                name=OM_DATABASE,
+                service=f"{OM_SERVICE}",
+            )
+            database = metadata.create_or_update(db_request)
+            log.info("Database criado: %s", OM_DATABASE)
+        else:
+            log.info("Database já existe: %s", OM_DATABASE)
+    except Exception as e:
+        log.warning("Erro ao criar database: %s", e)
+
+    # Criar schema
+    try:
+        from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+        schema = metadata.get_by_name(entity=DatabaseSchema, fqn=f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}")
+        if not schema:
+            schema_request = CreateDatabaseSchemaRequest(
+                name=OM_SCHEMA,
+                database=f"{OM_SERVICE}.{OM_DATABASE}",
+            )
+            schema = metadata.create_or_update(schema_request)
+            log.info("Schema criado: %s", OM_SCHEMA)
+        else:
+            log.info("Schema já existe: %s", OM_SCHEMA)
+    except Exception as e:
+        log.warning("Erro ao criar schema: %s", e)
+
+    log.info("✅ Serviço, database e schema verificados/criados.")
+
+
 # ─── Task 1: Registrar tabelas com schema completo ───────────────────────────
 
 def registrar_tabelas(**context):
@@ -66,15 +142,16 @@ def registrar_tabelas(**context):
 
     metadata = get_metadata_client()
 
-    # ── Obtém referência ao schema (deve existir no OM) ──────────────────────
+    # ── Obtém referência ao schema ────────────────────────────────────────────
     from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
     db_schema = metadata.get_by_name(
         entity=DatabaseSchema,
         fqn=f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}",
     )
     if not db_schema:
-        raise ValueError(f"Schema '{OM_SCHEMA}' não encontrado no OpenMetadata. "
-                         "Crie o serviço e o schema antes de executar esta DAG.")
+        log.error("Schema não encontrado. Execute a task criar_servico_schema primeiro.")
+        raise ValueError(f"Schema '{OM_SCHEMA}' não encontrado no OpenMetadata.")
+    
     schema_ref = EntityReference(id=db_schema.id, type="databaseSchema")
 
     # ── Definição das tabelas ─────────────────────────────────────────────────
@@ -295,18 +372,56 @@ def registrar_lineage(**context):
 def aplicar_governanca(**context):
     """
     Aplica em todas as tabelas:
-    - Domínio: Educacao
     - Tags PII nas camadas bronze e silver (MATRICULA, NOME)
     - Owner do dataset
     - Descrições por tabela
+    - Cria tags se não existirem
     """
     from metadata.generated.schema.entity.data.table import Table
+    from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+    from metadata.generated.schema.api.classification.createClassification import CreateClassificationRequest
+    from metadata.generated.schema.entity.classification.classification import Classification
 
     metadata = get_metadata_client()
 
+    # ── Criar classificações e tags se não existirem ──────────────────────────
+    classifications = {
+        "PII": ["Sensitive"],
+        "Tier": ["Tier1", "Tier2", "Tier3"],
+    }
+
+    for classification_name, tags in classifications.items():
+        try:
+            classification = metadata.get_by_name(entity=Classification, fqn=classification_name)
+            if not classification:
+                classification = metadata.create_or_update(
+                    CreateClassificationRequest(
+                        name=classification_name,
+                        description=f"Classificação {classification_name}",
+                    )
+                )
+                log.info("Classificação criada: %s", classification_name)
+        except Exception as e:
+            log.warning("Erro ao criar classificação %s: %s", classification_name, e)
+
+        for tag_name in tags:
+            try:
+                from metadata.generated.schema.entity.classification.tag import Tag
+                tag = metadata.get_by_name(entity=Tag, fqn=f"{classification_name}.{tag_name}")
+                if not tag:
+                    tag_request = CreateTagRequest(
+                        classification=classification_name,
+                        name=tag_name,
+                        description=f"Tag {tag_name}",
+                    )
+                    metadata.create_or_update(tag_request)
+                    log.info("Tag criada: %s.%s", classification_name, tag_name)
+            except Exception as e:
+                log.warning("Erro ao criar tag %s.%s: %s", classification_name, tag_name, e)
+
     # ── Owner (ajuste o e-mail para um usuário existente no seu OM) ──────────
     from metadata.generated.schema.entity.teams.user import User
-    owner_user = metadata.get_by_name(entity=User, fqn="admin")  # troque pelo owner real
+    owner_user = metadata.get_by_name(entity=User, fqn="admin")
     owner_ref = None
     if owner_user:
         from metadata.generated.schema.type.entityReference import EntityReference
@@ -367,16 +482,17 @@ def aplicar_governanca(**context):
             description=cfg["descricao"],
         )
 
-        # Tag de domínio educacional
-        try:
-            metadata.patch_tag(
-                entity=Table,
-                source=tabela,
-                tag_fqn="Dominio.Educacao",
-                is_suggested=False,
-            )
-        except Exception as e:
-            log.warning("Tag Dominio.Educacao não aplicada em %s: %s", nome_tabela, e)
+        # Tags (Tier)
+        for tag_fqn in cfg.get("tags_extra", []):
+            try:
+                metadata.patch_tag(
+                    entity=Table,
+                    source=tabela,
+                    tag_fqn=tag_fqn,
+                    is_suggested=False,
+                )
+            except Exception as e:
+                log.warning("Tag %s não aplicada em %s: %s", tag_fqn, nome_tabela, e)
 
         # Tag PII para tabelas com dados pessoais
         if cfg["pii"]:
@@ -389,18 +505,6 @@ def aplicar_governanca(**context):
                 )
             except Exception as e:
                 log.warning("Tag PII.Sensitive não aplicada em %s: %s", nome_tabela, e)
-
-        # Tags extras (Tier)
-        for tag_fqn in cfg.get("tags_extra", []):
-            try:
-                metadata.patch_tag(
-                    entity=Table,
-                    source=tabela,
-                    tag_fqn=tag_fqn,
-                    is_suggested=False,
-                )
-            except Exception as e:
-                log.warning("Tag %s não aplicada em %s: %s", tag_fqn, nome_tabela, e)
 
         # Owner
         if owner_ref:
@@ -418,63 +522,7 @@ def aplicar_governanca(**context):
     log.info("✅ Governança aplicada em todas as tabelas.")
 
 
-# ─── Task 4: Executar Profiling (Observabilidade) ─────────────────────────────
-
-def executar_profiling(**context):
-    """
-    Executa o profiler do OpenMetadata nas tabelas CSV.
-    Alimenta a aba Observabilidade com: row count, nulls,
-    distribuição de valores, min/max, histogramas.
-    """
-    from metadata.workflow.profiler import ProfilerWorkflow
-
-    config = {
-        "source": {
-            "type": "deltalake",          # ajuste para o conector correto do seu storage
-            "serviceName": OM_SERVICE,
-            "sourceConfig": {
-                "config": {
-                    "type": "Profiler",
-                    "generateSampleData": True,
-                    "profileSample": 100,  # % da tabela a ser amostrada
-                    "tableFilterPattern": {
-                        "includes": [
-                            "alunos_raw",
-                            "alunos_transformado",
-                            "kpis_dashboard",
-                            "analise_risco",
-                            "analise_engajamento",
-                            "insights",
-                        ]
-                    },
-                }
-            },
-        },
-        "processor": {
-            "type": "orm-profiler",
-            "config": {},
-        },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {},
-        },
-        "workflowConfig": {
-            "openMetadataServerConfig": {
-                "hostPort": OM_HOST,
-                "authProvider": "openmetadata",
-                "securityConfig": {"jwtToken": OM_JWT_TOKEN},
-            }
-        },
-    }
-
-    workflow = ProfilerWorkflow.create(config)
-    workflow.execute()
-    workflow.print_status()
-    workflow.stop()
-    log.info("✅ Profiling executado com sucesso.")
-
-
-# ─── Task 5: Registrar Glossário ─────────────────────────────────────────────
+# ─── Task 4: Registrar Glossário ─────────────────────────────────────────────
 
 def registrar_glossario(**context):
     """
@@ -579,17 +627,23 @@ default_args = {
 }
 
 with DAG(
-    dag_id="7_catalog_metadata",
+    dag_id="7_catalog_openmetadata",
     default_args=default_args,
     description=(
-        "Registra tabelas, linhagem, tags, owners, descrições e profiling "
+        "Registra tabelas, linhagem, tags, owners e descrições "
         "no OpenMetadata para todas as camadas bronze/silver/gold."
     ),
-    schedule=None,          # disparada pela DAG orquestradora
+    schedule=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["catalog", "governanca", "openmetadata"],
 ) as dag:
+
+    t0 = PythonOperator(
+        task_id="criar_servico_schema",
+        python_callable=criar_servico_schema,
+        doc_md="Cria serviço CustomDatabase, database e schema se não existirem.",
+    )
 
     t1 = PythonOperator(
         task_id="registrar_tabelas",
@@ -606,19 +660,13 @@ with DAG(
     t3 = PythonOperator(
         task_id="aplicar_governanca",
         python_callable=aplicar_governanca,
-        doc_md="Aplica domínio, tags PII, Tier, owner e descrições em todas as tabelas.",
+        doc_md="Aplica tags PII, Tier, owner e descrições em todas as tabelas.",
     )
 
     t4 = PythonOperator(
-        task_id="executar_profiling",
-        python_callable=executar_profiling,
-        doc_md="Executa profiling para alimentar a aba Observabilidade.",
-    )
-
-    t5 = PythonOperator(
         task_id="registrar_glossario",
         python_callable=registrar_glossario,
         doc_md="Cria termos de negócio no Glossário Educação e vincula às colunas.",
     )
 
-    t1 >> t2 >> t3 >> t4 >> t5
+    t0 >> t1 >> t2 >> t3 >> t4

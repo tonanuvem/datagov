@@ -12,7 +12,7 @@ import pandas as pd
 import json
 
 @dag(
-    dag_id='7_catalog_metadata',
+    dag_id='7_catalog_csv_local',
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False,

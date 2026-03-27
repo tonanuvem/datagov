@@ -12,6 +12,10 @@ import pandas as pd
 import numpy as np
 import os
 
+# LINEAGE BACKEND ADICIONADO
+from airflow.lineage.entities import File
+
+
 @dag(
     dag_id='3_silver_transformation',
     start_date=datetime(2024, 1, 1),
@@ -22,8 +26,14 @@ import os
     owner_links={"owner": "mailto:engenharia.dados@empresa.com"}
 )
 def silver_pipeline():
-    
-    @task(task_id='transform_data', execution_timeout=timedelta(minutes=5))
+
+    # LINEAGE BACKEND ADICIONADO — inlets/outlets declaram consumo e produção desta task
+    @task(
+        task_id='transform_data',
+        execution_timeout=timedelta(minutes=5),
+        inlets=[File(path="/opt/nb/bronze/alunos_raw.csv")],
+        outlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
+    )
     def transform_data():
         """Executa transformações e limpeza dos dados"""
         print("=== INICIANDO TRANSFORMAÇÃO SILVER ===")
@@ -105,7 +115,8 @@ def silver_pipeline():
             error_msg = f"❌ ERRO SILVER: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
+
     transform_data()
+
 
 silver_pipeline()

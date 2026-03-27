@@ -53,7 +53,23 @@ while ! docker logs openmetadata_server 2>&1 | grep -q "Started oejs.Server"; do
 done
 echo " ✅"
 
-# 6. Verificar status dos serviços
+# 6. Configurar AirFlow : 8 slots separados, um para cada task das DAGs para usar slots independentes e nao travar
+echo "Configurando AiirFlow..."
+# Pegar o token JWT para autenticar na API v2
+TOKEN=$(curl -s -X POST http://localhost:8080/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+#echo "Token: $TOKEN"
+
+# Criar o pool com o token
+curl -X POST http://localhost:8080/api/v2/pools \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"name": "pipeline_pool", "slots": 8, "description": "Pool pipeline alunos"}'
+
+  
+# 7. Verificar status dos serviços
 echo "Verificando status dos serviços..."
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 

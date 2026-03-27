@@ -2,7 +2,6 @@
 DAG BRONZE - Ingestão de Dados Crus
 Esta DAG simula o microsserviço de Ingestão gerando dados crus/normalizados 
 e carregando-os na camada BRONZE.
-
 INPUTS: /dados/curso.txt
 OUTPUT: /dados/bronze/alunos_raw.csv
 """
@@ -10,6 +9,10 @@ from airflow.sdk import dag, task
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+
+# LINEAGE BACKEND ADICIONADO
+from airflow.lineage.entities import File
+
 
 @dag(
     dag_id='1_bronze_ingestion',
@@ -21,8 +24,13 @@ import os
     owner_links={"owner": "mailto:engenharia.dados@empresa.com"}
 )
 def bronze_pipeline():
-    
-    @task(task_id='ingest_raw_data', execution_timeout=timedelta(minutes=2, seconds=30))
+
+    # LINEAGE BACKEND ADICIONADO — outlets declaram o arquivo produzido por esta task
+    @task(
+        task_id='ingest_raw_data',
+        execution_timeout=timedelta(minutes=2, seconds=30),
+        outlets=[File(path="/opt/nb/bronze/alunos_raw.csv")],
+    )
     def ingest_raw_data():
         """Ingere dados brutos do arquivo curso.txt para a camada Bronze"""
         print("=== INICIANDO INGESTÃO BRONZE ===")
@@ -52,7 +60,8 @@ def bronze_pipeline():
             error_msg = f"❌ ERRO BRONZE: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
+
     ingest_raw_data()
+
 
 bronze_pipeline()

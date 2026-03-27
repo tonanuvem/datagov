@@ -1,7 +1,7 @@
 """
 DAG de Catalogação e Governança no OpenMetadata
 Registra tabelas, linhagem, tags, owners, descrições e executa profiling
-para todas as camadas do pipeline medallion (bronze, silver, gold).
+para todas as camadas do pipeline camadas (bronze, silver, gold).
 
 Ordem de execução:
   1. criar_servico_schema    → cria serviço e schema se não existirem
@@ -26,7 +26,7 @@ OM_HOST      = "http://openmetadata-server:8585/api"
 OM_JWT_TOKEN = os.getenv("OPENMETADATA_JWT_TOKEN")
 OM_SERVICE   = "pipeline_alunos"
 OM_DATABASE  = "educacao"
-OM_SCHEMA    = "medallion"
+OM_SCHEMA    = "camadas"
 
 # Fully Qualified Name base: <service>.<database>.<schema>.<table>
 FQN_BASE = f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}"
@@ -152,7 +152,7 @@ def registrar_tabelas(**context):
         log.error("Schema não encontrado. Execute a task criar_servico_schema primeiro.")
         raise ValueError(f"Schema '{OM_SCHEMA}' não encontrado no OpenMetadata.")
     
-    schema_ref = EntityReference(id=db_schema.id, type="databaseSchema")
+    schema_fqn = f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}"
 
     # ── Definição das tabelas ─────────────────────────────────────────────────
 
@@ -164,29 +164,29 @@ def registrar_tabelas(**context):
             displayName="Alunos Raw (Bronze)",
             description=(
                 "Dados brutos de alunos ingeridos da fonte original. "
-                "Camada bronze do pipeline medallion. Contém 199 registros "
+                "Camada bronze do pipeline camadas. Contém 199 registros "
                 "com informações acadêmicas, frequência e perfil dos alunos."
             ),
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="MATRICULA",          dataType=DataType.INT,    nullable=False, description="Identificador único do aluno"),
-                Column(name="NOME",               dataType=DataType.STRING, nullable=False, description="Nome completo do aluno — dado PII"),
-                Column(name="REPROVACOES_MAT_1",  dataType=DataType.INT,    nullable=False, description="Número de reprovações na matéria 1"),
-                Column(name="REPROVACOES_MAT_2",  dataType=DataType.INT,    nullable=False, description="Número de reprovações na matéria 2"),
-                Column(name="REPROVACOES_MAT_3",  dataType=DataType.INT,    nullable=False, description="Número de reprovações na matéria 3"),
-                Column(name="REPROVACOES_MAT_4",  dataType=DataType.INT,    nullable=False, description="Número de reprovações na matéria 4"),
-                Column(name="NOTA_MAT_1",         dataType=DataType.FLOAT,  nullable=False, description="Nota obtida na matéria 1"),
-                Column(name="NOTA_MAT_2",         dataType=DataType.FLOAT,  nullable=False, description="Nota obtida na matéria 2"),
-                Column(name="NOTA_MAT_3",         dataType=DataType.FLOAT,  nullable=False, description="Nota obtida na matéria 3"),
-                Column(name="NOTA_MAT_4",         dataType=DataType.FLOAT,  nullable=True,  description="Nota obtida na matéria 4 — pode ser nula"),
-                Column(name="INGLES",             dataType=DataType.FLOAT,  nullable=True,  description="Nota de inglês — pode ser nula"),
-                Column(name="H_AULA_PRES",        dataType=DataType.INT,    nullable=False, description="Horas de aula presencial"),
-                Column(name="TAREFAS_ONLINE",     dataType=DataType.INT,    nullable=False, description="Número de tarefas online concluídas"),
-                Column(name="FALTAS",             dataType=DataType.INT,    nullable=False, description="Total de faltas do aluno"),
-                Column(name="PERFIL",             dataType=DataType.STRING, nullable=False, description="Perfil comportamental/acadêmico do aluno"),
-                Column(name="data_ingestao",      dataType=DataType.STRING, nullable=False, description="Timestamp de ingestão do registro"),
-                Column(name="fonte",              dataType=DataType.STRING, nullable=False, description="Origem dos dados brutos"),
+                Column(name="MATRICULA",          dataType=DataType.INT,    description="Identificador único do aluno"),
+                Column(name="NOME",               dataType=DataType.STRING, description="Nome completo do aluno — dado PII"),
+                Column(name="REPROVACOES_MAT_1",  dataType=DataType.INT,    description="Número de reprovações na matéria 1"),
+                Column(name="REPROVACOES_MAT_2",  dataType=DataType.INT,    description="Número de reprovações na matéria 2"),
+                Column(name="REPROVACOES_MAT_3",  dataType=DataType.INT,    description="Número de reprovações na matéria 3"),
+                Column(name="REPROVACOES_MAT_4",  dataType=DataType.INT,    description="Número de reprovações na matéria 4"),
+                Column(name="NOTA_MAT_1",         dataType=DataType.FLOAT,  description="Nota obtida na matéria 1"),
+                Column(name="NOTA_MAT_2",         dataType=DataType.FLOAT,  description="Nota obtida na matéria 2"),
+                Column(name="NOTA_MAT_3",         dataType=DataType.FLOAT,  description="Nota obtida na matéria 3"),
+                Column(name="NOTA_MAT_4",         dataType=DataType.FLOAT,   description="Nota obtida na matéria 4 — pode ser nula"),
+                Column(name="INGLES",             dataType=DataType.FLOAT,   description="Nota de inglês — pode ser nula"),
+                Column(name="H_AULA_PRES",        dataType=DataType.INT,    description="Horas de aula presencial"),
+                Column(name="TAREFAS_ONLINE",     dataType=DataType.INT,    description="Número de tarefas online concluídas"),
+                Column(name="FALTAS",             dataType=DataType.INT,    description="Total de faltas do aluno"),
+                Column(name="PERFIL",             dataType=DataType.STRING, description="Perfil comportamental/acadêmico do aluno"),
+                Column(name="data_ingestao",      dataType=DataType.STRING, description="Timestamp de ingestão do registro"),
+                Column(name="fonte",              dataType=DataType.STRING, description="Origem dos dados brutos"),
             ],
         ),
 
@@ -201,34 +201,34 @@ def registrar_tabelas(**context):
                 "199 registros."
             ),
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="MATRICULA",           dataType=DataType.INT,    nullable=False, description="Identificador único do aluno"),
-                Column(name="NOME",                dataType=DataType.STRING, nullable=False, description="Nome completo do aluno — dado PII"),
-                Column(name="REPROVACOES_MAT_1",   dataType=DataType.INT,    nullable=False),
-                Column(name="REPROVACOES_MAT_2",   dataType=DataType.INT,    nullable=False),
-                Column(name="REPROVACOES_MAT_3",   dataType=DataType.INT,    nullable=False),
-                Column(name="REPROVACOES_MAT_4",   dataType=DataType.INT,    nullable=False),
-                Column(name="NOTA_MAT_1",          dataType=DataType.FLOAT,  nullable=False),
-                Column(name="NOTA_MAT_2",          dataType=DataType.FLOAT,  nullable=False),
-                Column(name="NOTA_MAT_3",          dataType=DataType.FLOAT,  nullable=False),
-                Column(name="NOTA_MAT_4",          dataType=DataType.FLOAT,  nullable=False, description="Nulos preenchidos na camada silver"),
-                Column(name="INGLES",              dataType=DataType.INT,    nullable=False, description="Nulos preenchidos e convertido para int"),
-                Column(name="H_AULA_PRES",         dataType=DataType.INT,    nullable=False),
-                Column(name="TAREFAS_ONLINE",      dataType=DataType.INT,    nullable=False),
-                Column(name="FALTAS",              dataType=DataType.INT,    nullable=False),
-                Column(name="PERFIL",              dataType=DataType.STRING, nullable=False),
-                Column(name="data_ingestao",       dataType=DataType.STRING, nullable=False),
-                Column(name="fonte",               dataType=DataType.STRING, nullable=False),
-                Column(name="MEDIA_GERAL",         dataType=DataType.FLOAT,  nullable=False, description="Média aritmética das 4 matérias — coluna derivada"),
-                Column(name="TAXA_PRESENCA",       dataType=DataType.FLOAT,  nullable=False, description="Percentual de presença — coluna derivada"),
-                Column(name="INDICE_ENGAJAMENTO",  dataType=DataType.FLOAT,  nullable=False, description="Índice composto de engajamento do aluno — coluna derivada"),
-                Column(name="TOTAL_REPROVACOES",   dataType=DataType.INT,    nullable=False, description="Soma total de reprovações nas 4 matérias — coluna derivada"),
-                Column(name="STATUS_MAT_1",        dataType=DataType.STRING, nullable=False, description="Aprovado/Reprovado na matéria 1"),
-                Column(name="STATUS_MAT_2",        dataType=DataType.STRING, nullable=False, description="Aprovado/Reprovado na matéria 2"),
-                Column(name="STATUS_MAT_3",        dataType=DataType.STRING, nullable=False, description="Aprovado/Reprovado na matéria 3"),
-                Column(name="STATUS_MAT_4",        dataType=DataType.STRING, nullable=False, description="Aprovado/Reprovado na matéria 4"),
-                Column(name="data_transformacao",  dataType=DataType.STRING, nullable=False, description="Timestamp da transformação silver"),
+                Column(name="MATRICULA",           dataType=DataType.INT,    description="Identificador único do aluno"),
+                Column(name="NOME",                dataType=DataType.STRING, description="Nome completo do aluno — dado PII"),
+                Column(name="REPROVACOES_MAT_1",   dataType=DataType.INT,    ),
+                Column(name="REPROVACOES_MAT_2",   dataType=DataType.INT,    ),
+                Column(name="REPROVACOES_MAT_3",   dataType=DataType.INT,    ),
+                Column(name="REPROVACOES_MAT_4",   dataType=DataType.INT,    ),
+                Column(name="NOTA_MAT_1",          dataType=DataType.FLOAT,  ),
+                Column(name="NOTA_MAT_2",          dataType=DataType.FLOAT,  ),
+                Column(name="NOTA_MAT_3",          dataType=DataType.FLOAT,  ),
+                Column(name="NOTA_MAT_4",          dataType=DataType.FLOAT,  description="Nulos preenchidos na camada silver"),
+                Column(name="INGLES",              dataType=DataType.INT,    description="Nulos preenchidos e convertido para int"),
+                Column(name="H_AULA_PRES",         dataType=DataType.INT,    ),
+                Column(name="TAREFAS_ONLINE",      dataType=DataType.INT,    ),
+                Column(name="FALTAS",              dataType=DataType.INT,    ),
+                Column(name="PERFIL",              dataType=DataType.STRING),
+                Column(name="data_ingestao",       dataType=DataType.STRING),
+                Column(name="fonte",               dataType=DataType.STRING),
+                Column(name="MEDIA_GERAL",         dataType=DataType.FLOAT,  description="Média aritmética das 4 matérias — coluna derivada"),
+                Column(name="TAXA_PRESENCA",       dataType=DataType.FLOAT,  description="Percentual de presença — coluna derivada"),
+                Column(name="INDICE_ENGAJAMENTO",  dataType=DataType.FLOAT,  description="Índice composto de engajamento do aluno — coluna derivada"),
+                Column(name="TOTAL_REPROVACOES",   dataType=DataType.INT,    description="Soma total de reprovações nas 4 matérias — coluna derivada"),
+                Column(name="STATUS_MAT_1",        dataType=DataType.STRING, description="Aprovado/Reprovado na matéria 1"),
+                Column(name="STATUS_MAT_2",        dataType=DataType.STRING, description="Aprovado/Reprovado na matéria 2"),
+                Column(name="STATUS_MAT_3",        dataType=DataType.STRING, description="Aprovado/Reprovado na matéria 3"),
+                Column(name="STATUS_MAT_4",        dataType=DataType.STRING, description="Aprovado/Reprovado na matéria 4"),
+                Column(name="data_transformacao",  dataType=DataType.STRING, description="Timestamp da transformação silver"),
             ],
         ),
 
@@ -238,12 +238,12 @@ def registrar_tabelas(**context):
             displayName="KPIs Dashboard (Gold)",
             description="KPIs consolidados para uso em dashboard executivo. 11 métricas.",
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="metrica",     dataType=DataType.STRING, nullable=False, description="Nome da métrica"),
-                Column(name="valor",       dataType=DataType.FLOAT,  nullable=False, description="Valor numérico da métrica"),
-                Column(name="percentual",  dataType=DataType.FLOAT,  nullable=True,  description="Percentual — pode ser nulo para métricas absolutas"),
-                Column(name="categoria",   dataType=DataType.STRING, nullable=False, description="Categoria da métrica"),
+                Column(name="metrica",     dataType=DataType.STRING, description="Nome da métrica"),
+                Column(name="valor",       dataType=DataType.FLOAT,  description="Valor numérico da métrica"),
+                Column(name="percentual",  dataType=DataType.FLOAT,   description="Percentual — pode ser nulo para métricas absolutas"),
+                Column(name="categoria",   dataType=DataType.STRING, description="Categoria da métrica"),
             ],
         ),
 
@@ -252,12 +252,12 @@ def registrar_tabelas(**context):
             displayName="Análise de Risco (Gold)",
             description="Análise de risco de evasão segmentada por perfil de aluno. 7 registros.",
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="analise",     dataType=DataType.STRING, nullable=False, description="Tipo de análise de risco"),
-                Column(name="quantidade",  dataType=DataType.FLOAT,  nullable=True,  description="Quantidade de alunos no grupo"),
-                Column(name="percentual",  dataType=DataType.FLOAT,  nullable=True,  description="Percentual do grupo em relação ao total"),
-                Column(name="detalhes",    dataType=DataType.STRING, nullable=False, description="Descrição detalhada do grupo de risco"),
+                Column(name="analise",     dataType=DataType.STRING, description="Tipo de análise de risco"),
+                Column(name="quantidade",  dataType=DataType.FLOAT,   description="Quantidade de alunos no grupo"),
+                Column(name="percentual",  dataType=DataType.FLOAT,   description="Percentual do grupo em relação ao total"),
+                Column(name="detalhes",    dataType=DataType.STRING, description="Descrição detalhada do grupo de risco"),
             ],
         ),
 
@@ -266,11 +266,11 @@ def registrar_tabelas(**context):
             displayName="Análise de Engajamento (Gold)",
             description="Índices de engajamento dos alunos por categoria. 8 registros.",
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="analise",   dataType=DataType.STRING, nullable=False, description="Dimensão de engajamento analisada"),
-                Column(name="valor",     dataType=DataType.FLOAT,  nullable=False, description="Valor do índice"),
-                Column(name="categoria", dataType=DataType.STRING, nullable=False, description="Categoria do engajamento"),
+                Column(name="analise",   dataType=DataType.STRING, description="Dimensão de engajamento analisada"),
+                Column(name="valor",     dataType=DataType.FLOAT,  description="Valor do índice"),
+                Column(name="categoria", dataType=DataType.STRING, description="Categoria do engajamento"),
             ],
         ),
 
@@ -279,19 +279,19 @@ def registrar_tabelas(**context):
             displayName="Insights (Gold)",
             description="Insights priorizados gerados pelo pipeline. 6 registros.",
             tableType=TableType.Regular,
-            databaseSchema=schema_ref,
+            databaseSchema=schema_fqn,
             columns=[
-                Column(name="insight",    dataType=DataType.STRING, nullable=False, description="Descrição do insight gerado"),
-                Column(name="prioridade", dataType=DataType.STRING, nullable=False, description="Nível de prioridade: Alta / Média / Baixa"),
-                Column(name="valor",      dataType=DataType.FLOAT,  nullable=False, description="Valor quantitativo associado ao insight"),
-                Column(name="detalhes",   dataType=DataType.STRING, nullable=False, description="Detalhamento do insight"),
+                Column(name="insight",    dataType=DataType.STRING, description="Descrição do insight gerado"),
+                Column(name="prioridade", dataType=DataType.STRING, description="Nível de prioridade: Alta / Média / Baixa"),
+                Column(name="valor",      dataType=DataType.FLOAT,  description="Valor quantitativo associado ao insight"),
+                Column(name="detalhes",   dataType=DataType.STRING, description="Detalhamento do insight"),
             ],
         ),
     ]
 
     for tabela in tabelas:
         result = metadata.create_or_update(tabela)
-        log.info("Tabela registrada: %s (id=%s)", result.name.__root__, result.id.__root__)
+        log.info("Tabela registrada: %s (id=%s)", str(result.name), str(result.id))
 
     log.info("✅ %d tabelas registradas com sucesso.", len(tabelas))
 

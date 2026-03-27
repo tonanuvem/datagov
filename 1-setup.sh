@@ -16,6 +16,9 @@ echo "Configurando permissões do PostgreSQL..."
 sudo chown -R 999:999 datapipeline/openmetadata/docker-volume/db-data-postgres
 echo "Configurando permissões do Airflow..."
 chmod -R 777 datapipeline/airflow/{logs,plugins}
+echo "Configurando permissões do diretório de dados (UID 50000 = Airflow container)..."
+sudo chown -R 50000:0 dados/
+sudo chmod -R 755 dados/
 
 
 # 3. Inicializar banco de dados do OpenMetadata

@@ -1,341 +1,158 @@
 """
-DAG GOLD - Agregações e Métricas de Negócio
-INPUTS:  /dados/silver/alunos_transformado.csv
-OUTPUTS: /dados/gold/kpis_dashboard.csv, /dados/gold/analise_risco.csv,
-         /dados/gold/analise_engajamento.csv, /dados/gold/insights.csv
-"""
-from airflow.sdk import dag, task
-from datetime import datetime, timedelta
-import pandas as pd
-import os
+DAG GOLD - Agregações e KPIs
 
-# LINEAGE BACKEND ADICIONADO
-from airflow.lineage.entities import File
+INPUTS:  /opt/nb/silver/alunos_transformado.csv
+OUTPUTS: /opt/nb/gold/kpis_dashboard.csv
+         /opt/nb/gold/analise_risco.csv
+         /opt/nb/gold/analise_engajamento.csv
+         /opt/nb/gold/insights.csv
+
+Linhagem no OpenMetadata:
+  alunos_transformado ──► [3_gold_aggregation DAG] ──► kpis_dashboard
+                                                    ──► analise_risco
+                                                    ──► analise_engajamento
+                                                    ──► insights
+"""
+
+from __future__ import annotations
+
+import os
+from datetime import datetime, timedelta
+
+from airflow.sdk import dag, task, Asset
+import pandas as pd
+
+ASSET_SILVER       = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.alunos_transformado")
+ASSET_KPIS         = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.kpis_dashboard")
+ASSET_RISCO        = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.analise_risco")
+ASSET_ENGAJAMENTO  = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.analise_engajamento")
+ASSET_INSIGHTS     = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.insights")
+
+GOLD_DIR = "/opt/nb/gold"
 
 
 @dag(
-    dag_id='5_gold_aggregation',
+    dag_id="3_gold_aggregation",
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False,
-    tags=['gold', 'aggregation', 'analytics'],
-    description='Agregações e métricas de negócio na camada Gold',
-    owner_links={"owner": "mailto:engenharia.dados@empresa.com"}
+    tags=["gold", "aggregation", "kpi"],
+    description="Agregações e KPIs na camada Gold",
+    owner_links={"owner": "mailto:engenharia.dados@empresa.com"},
 )
 def gold_pipeline():
 
-    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: kpis_dashboard
     @task(
-        task_id='generate_kpis',
-        execution_timeout=timedelta(minutes=2, seconds=30),
-        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
-        outlets=[File(path="/opt/nb/gold/kpis_dashboard.csv")],
+        task_id="gerar_kpis",
+        execution_timeout=timedelta(minutes=5),
+        inlets=[ASSET_SILVER],
+        outlets=[ASSET_KPIS],
     )
-    def generate_kpis():
-        """Gera KPIs principais para dashboard"""
-        print("=== GERANDO KPIs DASHBOARD ===")
-        input_path = '/opt/nb/silver/alunos_transformado.csv'
-        output_path = '/opt/nb/gold/kpis_dashboard.csv'
-        
-        try:
-            print(f"Lendo arquivo: {input_path}")
-            df = pd.read_csv(input_path)
-            print(f"✅ Arquivo lido: {len(df)} registros")
-            
-            kpis = []
-            
-            # Taxa de alunos por perfil
-            print("Calculando distribuição por perfil...")
-            perfil_dist = df['PERFIL'].value_counts()
-            perfil_pct = round(perfil_dist / len(df) * 100, 2)
-            for perfil, count in perfil_dist.items():
-                kpis.append({
-                    'metrica': f'Alunos_{perfil}',
-                    'valor': count,
-                    'percentual': perfil_pct[perfil],
-                    'categoria': 'Distribuição por Perfil'
-                })
-            print(f"✅ {len(perfil_dist)} perfis processados")
-            
-            # Taxa de reprovação geral e por matéria
-            print("Calculando taxas de reprovação...")
-            for i in range(1, 5):
-                col = f'REPROVACOES_MAT_{i}'
-                reprovados = (df[col] > 0).sum()
-                taxa = round(reprovados / len(df) * 100, 2)
-                kpis.append({
-                    'metrica': f'Taxa_Reprovacao_MAT_{i}',
-                    'valor': reprovados,
-                    'percentual': taxa,
-                    'categoria': 'Taxa de Reprovação'
-                })
-            print("✅ Taxas de reprovação calculadas")
-            
-            # Média geral de notas da turma
-            media_turma = round(df['MEDIA_GERAL'].mean(), 2)
-            kpis.append({
-                'metrica': 'Media_Geral_Turma',
-                'valor': media_turma,
-                'percentual': None,
-                'categoria': 'Desempenho Acadêmico'
-            })
-            print(f"✅ Média geral da turma: {media_turma}")
-            
-            # Taxa de absenteísmo
-            faltas_media = round(df['FALTAS'].mean(), 2)
-            kpis.append({
-                'metrica': 'Faltas_Media',
-                'valor': faltas_media,
-                'percentual': None,
-                'categoria': 'Absenteísmo'
-            })
-            print(f"✅ Média de faltas: {faltas_media}")
-            
-            kpis_df = pd.DataFrame(kpis)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            kpis_df.to_csv(output_path, index=False)
-            print(f"✅ Arquivo salvo: {output_path}")
-            
-            msg = f"✅ KPIs gerados: {len(kpis)} métricas"
-            print(msg)
-            return msg
-            
-        except Exception as e:
-            error_msg = f"❌ ERRO GERANDO KPIs: {str(e)}"
-            print(error_msg)
-            raise Exception(error_msg)
+    def gerar_kpis():
+        df = pd.read_csv("/opt/nb/silver/alunos_transformado.csv")
+        os.makedirs(GOLD_DIR, exist_ok=True)
 
-    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: analise_risco
+        kpis = [
+            {"metrica": "total_alunos",          "valor": len(df),                                  "percentual": None,  "categoria": "Geral"},
+            {"metrica": "media_geral_turma",      "valor": round(df["MEDIA_GERAL"].mean(), 2),       "percentual": None,  "categoria": "Desempenho"},
+            {"metrica": "taxa_presenca_media",    "valor": round(df["TAXA_PRESENCA"].mean(), 2),     "percentual": None,  "categoria": "Frequência"},
+            {"metrica": "indice_engajamento",     "valor": round(df["INDICE_ENGAJAMENTO"].mean(), 2),"percentual": None,  "categoria": "Engajamento"},
+            {"metrica": "alunos_aprovados",       "valor": int((df["MEDIA_GERAL"] >= 5).sum()),      "percentual": round((df["MEDIA_GERAL"] >= 5).mean() * 100, 1), "categoria": "Desempenho"},
+            {"metrica": "alunos_reprovados",      "valor": int((df["MEDIA_GERAL"] < 5).sum()),       "percentual": round((df["MEDIA_GERAL"] < 5).mean() * 100, 1),  "categoria": "Desempenho"},
+            {"metrica": "alunos_risco_evasao",    "valor": int((df["TOTAL_REPROVACOES"] >= 3).sum()),"percentual": round((df["TOTAL_REPROVACOES"] >= 3).mean() * 100, 1), "categoria": "Risco"},
+            {"metrica": "media_faltas",           "valor": round(df["FALTAS"].mean(), 2),            "percentual": None,  "categoria": "Frequência"},
+            {"metrica": "tarefas_online_media",   "valor": round(df["TAREFAS_ONLINE"].mean(), 2),    "percentual": None,  "categoria": "Engajamento"},
+            {"metrica": "total_reprovacoes_media","valor": round(df["TOTAL_REPROVACOES"].mean(), 2), "percentual": None,  "categoria": "Desempenho"},
+            {"metrica": "alunos_sem_reprovacao",  "valor": int((df["TOTAL_REPROVACOES"] == 0).sum()),"percentual": round((df["TOTAL_REPROVACOES"] == 0).mean() * 100, 1), "categoria": "Desempenho"},
+        ]
+        pd.DataFrame(kpis).to_csv(f"{GOLD_DIR}/kpis_dashboard.csv", index=False)
+        print(f"✅ KPIs gerados: {len(kpis)} métricas")
+
     @task(
-        task_id='generate_risk_analysis',
-        execution_timeout=timedelta(minutes=2, seconds=30),
-        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
-        outlets=[File(path="/opt/nb/gold/analise_risco.csv")],
+        task_id="gerar_analise_risco",
+        execution_timeout=timedelta(minutes=5),
+        inlets=[ASSET_SILVER],
+        outlets=[ASSET_RISCO],
     )
-    def generate_risk_analysis():
-        """Gera análise de risco dos alunos"""
-        print("=== GERANDO ANÁLISE DE RISCO ===")
-        input_path = '/opt/nb/silver/alunos_transformado.csv'
-        output_path = '/opt/nb/gold/analise_risco.csv'
-        
-        try:
-            print(f"Lendo arquivo: {input_path}")
-            df = pd.read_csv(input_path)
-            print(f"✅ Arquivo lido: {len(df)} registros")
-            
-            risk_data = []
-            
-            # Alunos em situação crítica
-            print("Identificando alunos críticos...")
-            criticos = df[df['PERFIL'] == 'DIFICULDADE']
-            risk_data.append({
-                'analise': 'Alunos_Criticos',
-                'quantidade': len(criticos),
-                'percentual': round(len(criticos) / len(df) * 100, 2),
-                'detalhes': f"Perfil DIFICULDADE"
-            })
-            print(f"✅ {len(criticos)} alunos críticos identificados")
-            
-            # Correlação entre faltas e desempenho
-            print("Calculando correlações...")
-            corr_faltas = round(df[['FALTAS', 'MEDIA_GERAL']].corr().iloc[0, 1], 3)
-            risk_data.append({
-                'analise': 'Correlacao_Faltas_Desempenho',
-                'quantidade': None,
-                'percentual': None,
-                'detalhes': f"Correlação: {corr_faltas}"
-            })
-            print(f"✅ Correlação faltas/desempenho: {corr_faltas}")
-            
-            # Matérias com maior índice de reprovação
-            print("Analisando reprovações por matéria...")
-            for i in range(1, 5):
-                col = f'REPROVACOES_MAT_{i}'
-                reprovados = (df[col] > 0).sum()
-                risk_data.append({
-                    'analise': f'Reprovacoes_MAT_{i}',
-                    'quantidade': reprovados,
-                    'percentual': round(reprovados / len(df) * 100, 2),
-                    'detalhes': f"Matéria {i}"
-                })
-            print("✅ Análise de reprovações concluída")
-            
-            # Alunos com múltiplas reprovações
-            multiplas = df[df['TOTAL_REPROVACOES'] >= 3]
-            risk_data.append({
-                'analise': 'Multiplas_Reprovacoes',
-                'quantidade': len(multiplas),
-                'percentual': round(len(multiplas) / len(df) * 100, 2),
-                'detalhes': "3 ou mais reprovações"
-            })
-            print(f"✅ {len(multiplas)} alunos com múltiplas reprovações")
-            
-            risk_df = pd.DataFrame(risk_data)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            risk_df.to_csv(output_path, index=False)
-            print(f"✅ Arquivo salvo: {output_path}")
-            
-            msg = f"✅ Análise de risco gerada: {len(risk_data)} indicadores"
-            print(msg)
-            return msg
-            
-        except Exception as e:
-            error_msg = f"❌ ERRO ANÁLISE DE RISCO: {str(e)}"
-            print(error_msg)
-            raise Exception(error_msg)
+    def gerar_analise_risco():
+        df = pd.read_csv("/opt/nb/silver/alunos_transformado.csv")
+        os.makedirs(GOLD_DIR, exist_ok=True)
 
-    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: analise_engajamento
+        total = len(df)
+        risco_alto  = df[df["TOTAL_REPROVACOES"] >= 3]
+        risco_medio = df[(df["TOTAL_REPROVACOES"] >= 1) & (df["TOTAL_REPROVACOES"] < 3)]
+        sem_risco   = df[df["TOTAL_REPROVACOES"] == 0]
+        baixa_pres  = df[df["TAXA_PRESENCA"] < 75]
+        alto_eng    = df[df["INDICE_ENGAJAMENTO"] > 70]
+
+        registros = [
+            {"analise": "risco_alto",           "quantidade": len(risco_alto),  "percentual": round(len(risco_alto)/total*100,1),  "detalhes": "3+ reprovações"},
+            {"analise": "risco_medio",          "quantidade": len(risco_medio), "percentual": round(len(risco_medio)/total*100,1), "detalhes": "1-2 reprovações"},
+            {"analise": "sem_risco",            "quantidade": len(sem_risco),   "percentual": round(len(sem_risco)/total*100,1),   "detalhes": "Nenhuma reprovação"},
+            {"analise": "baixa_presenca",       "quantidade": len(baixa_pres),  "percentual": round(len(baixa_pres)/total*100,1),  "detalhes": "Presença < 75%"},
+            {"analise": "alto_engajamento",     "quantidade": len(alto_eng),    "percentual": round(len(alto_eng)/total*100,1),    "detalhes": "Índice > 70"},
+            {"analise": "perfil_dificuldade",   "quantidade": int((df.get("PERFIL","") == "DIFICULDADE").sum()), "percentual": None, "detalhes": "Perfil DIFICULDADE"},
+            {"analise": "perfil_desempenho",    "quantidade": int((df.get("PERFIL","") == "DESEMPENHO").sum()),  "percentual": None, "detalhes": "Perfil DESEMPENHO"},
+        ]
+        pd.DataFrame(registros).to_csv(f"{GOLD_DIR}/analise_risco.csv", index=False)
+        print(f"✅ Análise de risco: {len(registros)} registros")
+
     @task(
-        task_id='generate_engagement_analysis',
-        execution_timeout=timedelta(minutes=2, seconds=30),
-        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
-        outlets=[File(path="/opt/nb/gold/analise_engajamento.csv")],
+        task_id="gerar_analise_engajamento",
+        execution_timeout=timedelta(minutes=5),
+        inlets=[ASSET_SILVER],
+        outlets=[ASSET_ENGAJAMENTO],
     )
-    def generate_engagement_analysis():
-        """Gera análise de engajamento dos alunos"""
-        print("=== GERANDO ANÁLISE DE ENGAJAMENTO ===")
-        input_path = '/opt/nb/silver/alunos_transformado.csv'
-        output_path = '/opt/nb/gold/analise_engajamento.csv'
-        
-        try:
-            print(f"Lendo arquivo: {input_path}")
-            df = pd.read_csv(input_path)
-            print(f"✅ Arquivo lido: {len(df)} registros")
-            
-            engagement_data = []
-            
-            # Relação entre H_AULA_PRES e desempenho
-            print("Calculando correlação presença/desempenho...")
-            corr_presenca = round(df[['H_AULA_PRES', 'MEDIA_GERAL']].corr().iloc[0, 1], 3)
-            engagement_data.append({
-                'analise': 'Correlacao_Presenca_Desempenho',
-                'valor': corr_presenca,
-                'categoria': 'Presença'
-            })
-            print(f"✅ Correlação: {corr_presenca}")
-            
-            # Taxa de conclusão de TAREFAS_ONLINE vs perfil
-            print("Analisando tarefas online por perfil...")
-            for perfil in df['PERFIL'].unique():
-                media_tarefas = round(df[df['PERFIL'] == perfil]['TAREFAS_ONLINE'].mean(), 2)
-                engagement_data.append({
-                    'analise': f'Media_Tarefas_{perfil}',
-                    'valor': media_tarefas,
-                    'categoria': 'Tarefas Online'
-                })
-                print(f"  - {perfil}: {media_tarefas} tarefas em média")
-            
-            # Impacto do conhecimento de INGLES no desempenho
-            print("Analisando impacto do inglês...")
-            com_ingles = round(df[df['INGLES'] == 1]['MEDIA_GERAL'].mean(), 2)
-            sem_ingles = round(df[df['INGLES'] == 0]['MEDIA_GERAL'].mean(), 2)
-            engagement_data.append({
-                'analise': 'Media_Com_Ingles',
-                'valor': com_ingles,
-                'categoria': 'Impacto Inglês'
-            })
-            engagement_data.append({
-                'analise': 'Media_Sem_Ingles',
-                'valor': sem_ingles,
-                'categoria': 'Impacto Inglês'
-            })
-            print(f"✅ Com inglês: {com_ingles} | Sem inglês: {sem_ingles}")
-            
-            engagement_df = pd.DataFrame(engagement_data)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            engagement_df.to_csv(output_path, index=False)
-            print(f"✅ Arquivo salvo: {output_path}")
-            
-            msg = f"✅ Análise de engajamento gerada: {len(engagement_data)} indicadores"
-            print(msg)
-            return msg
-            
-        except Exception as e:
-            error_msg = f"❌ ERRO ANÁLISE DE ENGAJAMENTO: {str(e)}"
-            print(error_msg)
-            raise Exception(error_msg)
+    def gerar_analise_engajamento():
+        df = pd.read_csv("/opt/nb/silver/alunos_transformado.csv")
+        os.makedirs(GOLD_DIR, exist_ok=True)
 
-    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: insights
+        registros = [
+            {"analise": "engajamento_medio",        "valor": round(df["INDICE_ENGAJAMENTO"].mean(), 2),    "categoria": "Geral"},
+            {"analise": "presenca_media",           "valor": round(df["TAXA_PRESENCA"].mean(), 2),         "categoria": "Presença"},
+            {"analise": "tarefas_online_media",     "valor": round(df["TAREFAS_ONLINE"].mean(), 2),        "categoria": "Tarefas"},
+            {"analise": "h_aula_pres_media",        "valor": round(df["H_AULA_PRES"].mean(), 2),           "categoria": "Presença"},
+            {"analise": "alto_engajamento_pct",     "valor": round((df["INDICE_ENGAJAMENTO"] > 70).mean()*100, 1), "categoria": "Segmentação"},
+            {"analise": "baixo_engajamento_pct",    "valor": round((df["INDICE_ENGAJAMENTO"] < 40).mean()*100, 1), "categoria": "Segmentação"},
+            {"analise": "engajamento_mediano",      "valor": round(df["INDICE_ENGAJAMENTO"].median(), 2),  "categoria": "Distribuição"},
+            {"analise": "engajamento_desvio_padrao","valor": round(df["INDICE_ENGAJAMENTO"].std(), 2),     "categoria": "Distribuição"},
+        ]
+        pd.DataFrame(registros).to_csv(f"{GOLD_DIR}/analise_engajamento.csv", index=False)
+        print(f"✅ Análise de engajamento: {len(registros)} registros")
+
     @task(
-        task_id='generate_insights',
-        execution_timeout=timedelta(minutes=2, seconds=30),
-        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
-        outlets=[File(path="/opt/nb/gold/insights.csv")],
+        task_id="gerar_insights",
+        execution_timeout=timedelta(minutes=5),
+        inlets=[ASSET_SILVER],
+        outlets=[ASSET_INSIGHTS],
     )
-    def generate_insights():
-        """Gera insights para melhorias"""
-        print("=== GERANDO INSIGHTS ===")
-        input_path = '/opt/nb/silver/alunos_transformado.csv'
-        output_path = '/opt/nb/gold/insights.csv'
-        
-        try:
-            print(f"Lendo arquivo: {input_path}")
-            df = pd.read_csv(input_path)
-            print(f"✅ Arquivo lido: {len(df)} registros")
-            
-            insights = []
-            
-            # Ranking de matérias que precisam de reforço
-            print("Analisando necessidade de reforço por matéria...")
-            for i in range(1, 5):
-                nota_col = f'NOTA_MAT_{i}'
-                media = round(df[nota_col].mean(), 2)
-                reprov_col = f'REPROVACOES_MAT_{i}'
-                reprovados = (df[reprov_col] > 0).sum()
-                prioridade = 'ALTA' if media < 5.5 or reprovados > 10 else 'MEDIA' if media < 6.5 else 'BAIXA'
-                
-                insights.append({
-                    'insight': f'Materia_{i}_Necessita_Reforco',
-                    'prioridade': prioridade,
-                    'valor': media,
-                    'detalhes': f"Média: {media}, Reprovados: {reprovados}"
-                })
-                print(f"  - Matéria {i}: Prioridade {prioridade} (média: {media})")
-            
-            # Perfil de alunos que se beneficiariam de tutoria
-            print("Identificando alunos que necessitam tutoria...")
-            tutoria = df[(df['MEDIA_GERAL'] < 6) & (df['TOTAL_REPROVACOES'] > 0)]
-            insights.append({
-                'insight': 'Alunos_Necessitam_Tutoria',
-                'prioridade': 'ALTA',
-                'valor': len(tutoria),
-                'detalhes': f"{len(tutoria)} alunos com média < 6 e reprovações"
-            })
-            print(f"✅ {len(tutoria)} alunos necessitam tutoria")
-            
-            # Comparativo: alunos com inglês vs sem inglês
-            print("Analisando impacto do inglês...")
-            com_ingles = round(df[df['INGLES'] == 1]['MEDIA_GERAL'].mean(), 2)
-            sem_ingles = round(df[df['INGLES'] == 0]['MEDIA_GERAL'].mean(), 2)
-            diferenca = round(com_ingles - sem_ingles, 2)
-            
-            insights.append({
-                'insight': 'Impacto_Ingles_Desempenho',
-                'prioridade': 'MEDIA' if abs(diferenca) > 0.5 else 'BAIXA',
-                'valor': diferenca,
-                'detalhes': f"Diferença de {diferenca} pontos na média"
-            })
-            print(f"✅ Diferença de desempenho: {diferenca} pontos")
-            
-            insights_df = pd.DataFrame(insights)
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            insights_df.to_csv(output_path, index=False)
-            print(f"✅ Arquivo salvo: {output_path}")
-            
-            msg = f"✅ Insights gerados: {len(insights)} recomendações"
-            print(msg)
-            return msg
-            
-        except Exception as e:
-            error_msg = f"❌ ERRO GERANDO INSIGHTS: {str(e)}"
-            print(error_msg)
-            raise Exception(error_msg)
+    def gerar_insights():
+        df = pd.read_csv("/opt/nb/silver/alunos_transformado.csv")
+        os.makedirs(GOLD_DIR, exist_ok=True)
 
-    # Executar tasks em paralelo (todas leem o mesmo arquivo)
-    generate_kpis()
-    generate_risk_analysis()
-    generate_engagement_analysis()
-    generate_insights()
+        pct_risco   = round((df["TOTAL_REPROVACOES"] >= 3).mean() * 100, 1)
+        pct_presenca = round(df["TAXA_PRESENCA"].mean(), 1)
+        media_geral  = round(df["MEDIA_GERAL"].mean(), 2)
+        pct_engaj    = round((df["INDICE_ENGAJAMENTO"] > 70).mean() * 100, 1)
+        pct_semreprov = round((df["TOTAL_REPROVACOES"] == 0).mean() * 100, 1)
+        pct_baixapres = round((df["TAXA_PRESENCA"] < 75).mean() * 100, 1)
+
+        registros = [
+            {"insight": "Alunos com alto risco de evasão",   "prioridade": "Alta",  "valor": pct_risco,    "detalhes": f"{pct_risco}% com 3+ reprovações"},
+            {"insight": "Taxa de presença abaixo do ideal",  "prioridade": "Alta",  "valor": pct_baixapres,"detalhes": f"{pct_baixapres}% com presença < 75%"},
+            {"insight": "Média geral da turma",              "prioridade": "Média", "valor": media_geral,  "detalhes": f"Média: {media_geral} de 10"},
+            {"insight": "Alunos com alto engajamento",       "prioridade": "Média", "valor": pct_engaj,    "detalhes": f"{pct_engaj}% com índice > 70"},
+            {"insight": "Presença média da turma",           "prioridade": "Baixa", "valor": pct_presenca, "detalhes": f"Presença média: {pct_presenca}%"},
+            {"insight": "Alunos sem reprovações",            "prioridade": "Baixa", "valor": pct_semreprov,"detalhes": f"{pct_semreprov}% sem nenhuma reprovação"},
+        ]
+        pd.DataFrame(registros).to_csv(f"{GOLD_DIR}/insights.csv", index=False)
+        print(f"✅ Insights gerados: {len(registros)} registros")
+
+    # Todas as tasks gold rodam em paralelo a partir do silver
+    gerar_kpis()
+    gerar_analise_risco()
+    gerar_analise_engajamento()
+    gerar_insights()
 
 
 gold_pipeline()

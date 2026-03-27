@@ -1,16 +1,17 @@
 """
 DAG GOLD - Agregações e Métricas de Negócio
-Esta DAG consome o FATO correlacionado da SILVER para criar os ativos curados 
-e agregados da GOLD, otimizados para consumo (BI/Dashboard e ML).
-
-INPUTS: /dados/silver/alunos_transformado.csv
-OUTPUT: /dados/gold/kpis_dashboard.csv, /dados/gold/analise_risco.csv, 
-        /dados/gold/analise_engajamento.csv, /dados/gold/insights.csv
+INPUTS:  /dados/silver/alunos_transformado.csv
+OUTPUTS: /dados/gold/kpis_dashboard.csv, /dados/gold/analise_risco.csv,
+         /dados/gold/analise_engajamento.csv, /dados/gold/insights.csv
 """
 from airflow.sdk import dag, task
 from datetime import datetime, timedelta
 import pandas as pd
 import os
+
+# LINEAGE BACKEND ADICIONADO
+from airflow.lineage.entities import File
+
 
 @dag(
     dag_id='5_gold_aggregation',
@@ -22,8 +23,14 @@ import os
     owner_links={"owner": "mailto:engenharia.dados@empresa.com"}
 )
 def gold_pipeline():
-    
-    @task(task_id='generate_kpis', execution_timeout=timedelta(minutes=2, seconds=30))
+
+    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: kpis_dashboard
+    @task(
+        task_id='generate_kpis',
+        execution_timeout=timedelta(minutes=2, seconds=30),
+        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
+        outlets=[File(path="/opt/nb/gold/kpis_dashboard.csv")],
+    )
     def generate_kpis():
         """Gera KPIs principais para dashboard"""
         print("=== GERANDO KPIs DASHBOARD ===")
@@ -97,8 +104,14 @@ def gold_pipeline():
             error_msg = f"❌ ERRO GERANDO KPIs: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
-    @task(task_id='generate_risk_analysis', execution_timeout=timedelta(minutes=2, seconds=30))
+
+    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: analise_risco
+    @task(
+        task_id='generate_risk_analysis',
+        execution_timeout=timedelta(minutes=2, seconds=30),
+        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
+        outlets=[File(path="/opt/nb/gold/analise_risco.csv")],
+    )
     def generate_risk_analysis():
         """Gera análise de risco dos alunos"""
         print("=== GERANDO ANÁLISE DE RISCO ===")
@@ -170,8 +183,14 @@ def gold_pipeline():
             error_msg = f"❌ ERRO ANÁLISE DE RISCO: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
-    @task(task_id='generate_engagement_analysis', execution_timeout=timedelta(minutes=2, seconds=30))
+
+    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: analise_engajamento
+    @task(
+        task_id='generate_engagement_analysis',
+        execution_timeout=timedelta(minutes=2, seconds=30),
+        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
+        outlets=[File(path="/opt/nb/gold/analise_engajamento.csv")],
+    )
     def generate_engagement_analysis():
         """Gera análise de engajamento dos alunos"""
         print("=== GERANDO ANÁLISE DE ENGAJAMENTO ===")
@@ -235,8 +254,14 @@ def gold_pipeline():
             error_msg = f"❌ ERRO ANÁLISE DE ENGAJAMENTO: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
-    @task(task_id='generate_insights', execution_timeout=timedelta(minutes=2, seconds=30))
+
+    # LINEAGE BACKEND ADICIONADO — inlet: silver | outlet: insights
+    @task(
+        task_id='generate_insights',
+        execution_timeout=timedelta(minutes=2, seconds=30),
+        inlets=[File(path="/opt/nb/silver/alunos_transformado.csv")],
+        outlets=[File(path="/opt/nb/gold/insights.csv")],
+    )
     def generate_insights():
         """Gera insights para melhorias"""
         print("=== GERANDO INSIGHTS ===")
@@ -305,11 +330,12 @@ def gold_pipeline():
             error_msg = f"❌ ERRO GERANDO INSIGHTS: {str(e)}"
             print(error_msg)
             raise Exception(error_msg)
-    
+
     # Executar tasks em paralelo (todas leem o mesmo arquivo)
     generate_kpis()
     generate_risk_analysis()
     generate_engagement_analysis()
     generate_insights()
+
 
 gold_pipeline()

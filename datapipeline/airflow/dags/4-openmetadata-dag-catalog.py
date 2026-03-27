@@ -6,13 +6,28 @@ as abas do OpenMetadata: Linhagem, Observabilidade, Domínios e Governar.
 Ordem de execução:
   t0. criar_servico_schema       → cria serviço e schema se não existirem
   t1. registrar_tabelas          → cria/atualiza tabelas com schema completo
-  t2. registrar_lineage          → bronze → silver → gold (4 tabelas gold)
+                                   (inclui curso_txt como fonte CSV)
+  t2. registrar_lineage          → curso_txt → bronze → silver → gold (4 tabelas)
   t3. aplicar_governanca         → owner, tags PII/Tier, descrições
   t4. registrar_glossario        → termos de negócio no Glossário Educação
   t5. vincular_glossario_colunas → vincula termos às colunas da silver
   t6. criar_dominio_produto      → Domínio Educação + Produto de Dados gold
   t7. registrar_metrica_negocio  → Governar > Métricas
   t8. criar_alertas              → Observabilidade > Alertas de qualidade
+
+Grafo de linhagem esperado no OpenMetadata:
+  curso_txt (CSV fonte)
+      └─► alunos_raw (Bronze)
+              └─► alunos_transformado (Silver)
+                      ├─► kpis_dashboard      (Gold)
+                      ├─► analise_risco       (Gold)
+                      ├─► analise_engajamento (Gold)
+                      └─► insights            (Gold)
+
+PRÉ-REQUISITO para linhagem via Airflow Lineage Backend:
+  As DAGs 1-dag_bronze.py, 2-dag_silver.py e 3-dag_gold.py devem usar
+  Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.<tabela>")
+  nos parâmetros inlets/outlets de cada task.
 """
 
 from __future__ import annotations
@@ -114,7 +129,12 @@ def criar_servico_schema(**context):
 # ─── Task 1: Registrar tabelas ────────────────────────────────────────────────
 
 def registrar_tabelas(**context):
-    """Cria ou atualiza todas as tabelas com schema detalhado."""
+    """
+    Cria ou atualiza todas as tabelas com schema detalhado.
+    Inclui curso_txt como entidade fonte (CSV de origem do pipeline).
+    Sem ela catalogada, o Lineage Backend não consegue criar a aresta
+    curso_txt → alunos_raw ao processar os inlets/outlets da DAG Bronze.
+    """
     from metadata.generated.schema.api.data.createTable import CreateTableRequest
     from metadata.generated.schema.entity.data.table import Column, DataType, TableType
     from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -126,11 +146,49 @@ def registrar_tabelas(**context):
         fqn=f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}",
     )
     if not db_schema:
-        raise ValueError(f"Schema '{OM_SCHEMA}' não encontrado. Execute criar_servico_schema primeiro.")
+        raise ValueError(
+            f"Schema '{OM_SCHEMA}' não encontrado. Execute criar_servico_schema primeiro."
+        )
 
     schema_fqn = f"{OM_SERVICE}.{OM_DATABASE}.{OM_SCHEMA}"
 
     tabelas = [
+
+        # ── FONTE CSV ────────────────────────────────────────────────────────
+        # Registrada como Table para que o Lineage Backend do OpenMetadata
+        # consiga resolver o Asset URI:
+        #   openmetadata://pipeline_alunos.educacao.camadas.curso_txt
+        # declarado como inlet na DAG Bronze (1-dag_bronze.py).
+        CreateTableRequest(
+            name="curso_txt",
+            displayName="Fonte: curso.txt (CSV)",
+            description=(
+                "Arquivo CSV de origem do pipeline medallion. Contém os dados brutos "
+                "dos alunos antes de qualquer processamento. "
+                "Localização no servidor: /opt/nb/curso.txt. "
+                "É a raiz do grafo de linhagem: curso_txt → Bronze → Silver → Gold."
+            ),
+            tableType=TableType.Regular,
+            databaseSchema=schema_fqn,
+            columns=[
+                Column(name="MATRICULA",         dataType=DataType.INT,   description="Matrícula do aluno — identificador único na fonte"),
+                Column(name="NOME",              dataType=DataType.STRING,description="Nome completo do aluno — dado PII"),
+                Column(name="REPROVACOES_MAT_1", dataType=DataType.INT,   description="Reprovações na matéria 1"),
+                Column(name="REPROVACOES_MAT_2", dataType=DataType.INT,   description="Reprovações na matéria 2"),
+                Column(name="REPROVACOES_MAT_3", dataType=DataType.INT,   description="Reprovações na matéria 3"),
+                Column(name="REPROVACOES_MAT_4", dataType=DataType.INT,   description="Reprovações na matéria 4"),
+                Column(name="NOTA_MAT_1",        dataType=DataType.FLOAT, description="Nota obtida na matéria 1"),
+                Column(name="NOTA_MAT_2",        dataType=DataType.FLOAT, description="Nota obtida na matéria 2"),
+                Column(name="NOTA_MAT_3",        dataType=DataType.FLOAT, description="Nota obtida na matéria 3"),
+                Column(name="NOTA_MAT_4",        dataType=DataType.FLOAT, description="Nota obtida na matéria 4 — pode ser nula na fonte"),
+                Column(name="INGLES",            dataType=DataType.FLOAT, description="Nota de inglês — pode ser nula na fonte"),
+                Column(name="H_AULA_PRES",       dataType=DataType.INT,   description="Horas de aula presencial"),
+                Column(name="TAREFAS_ONLINE",    dataType=DataType.INT,   description="Tarefas online concluídas"),
+                Column(name="FALTAS",            dataType=DataType.INT,   description="Total de faltas"),
+                Column(name="PERFIL",            dataType=DataType.STRING,description="Perfil comportamental/acadêmico do aluno"),
+            ],
+        ),
+
         # ── BRONZE ──────────────────────────────────────────────────────────
         CreateTableRequest(
             name="alunos_raw",
@@ -162,6 +220,7 @@ def registrar_tabelas(**context):
                 Column(name="fonte",             dataType=DataType.STRING,description="Origem dos dados brutos"),
             ],
         ),
+
         # ── SILVER ──────────────────────────────────────────────────────────
         CreateTableRequest(
             name="alunos_transformado",
@@ -201,6 +260,7 @@ def registrar_tabelas(**context):
                 Column(name="data_transformacao", dataType=DataType.STRING,description="Timestamp da transformação silver"),
             ],
         ),
+
         # ── GOLD ────────────────────────────────────────────────────────────
         CreateTableRequest(
             name="kpis_dashboard",
@@ -259,13 +319,21 @@ def registrar_tabelas(**context):
         result = metadata.create_or_update(tabela)
         log.info("Tabela registrada: %s", str(result.name))
 
-    log.info("✅ %d tabelas registradas.", len(tabelas))
+    log.info("✅ %d tabelas registradas (incluindo curso_txt).", len(tabelas))
 
 
 # ─── Task 2: Registrar Linhagem ───────────────────────────────────────────────
 
 def registrar_lineage(**context):
-    """bronze → silver → 4 tabelas gold."""
+    """
+    Registra linhagem completa:
+      curso_txt → alunos_raw (bronze) → alunos_transformado (silver) → 4 tabelas gold
+
+    A aresta curso_txt → bronze também é criada automaticamente pelo Airflow
+    Lineage Backend quando a DAG 1-dag_bronze.py é executada (via inlets/outlets
+    com Asset URI). Este registro manual garante que o grafo apareça mesmo que
+    o backend ainda não tenha processado a execução.
+    """
     from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
@@ -280,6 +348,7 @@ def registrar_lineage(**context):
             raise ValueError(f"Tabela não encontrada: {fqn}")
         return t
 
+    fonte  = get_table("curso_txt")
     bronze = get_table("alunos_raw")
     silver = get_table("alunos_transformado")
     gold_tables = {
@@ -289,6 +358,18 @@ def registrar_lineage(**context):
         "insights":            get_table("insights"),
     }
 
+    # ── fonte CSV → bronze ───────────────────────────────────────────────────
+    metadata.add_lineage(AddLineageRequest(edge=EntitiesEdge(
+        fromEntity=EntityReference(id=fonte.id,  type="table"),
+        toEntity=EntityReference(id=bronze.id,   type="table"),
+        lineageDetails=LineageDetails(description=(
+            "Ingestão do arquivo CSV fonte (curso.txt) para a camada Bronze. "
+            "Adiciona colunas de metadados: data_ingestao e fonte."
+        )),
+    )))
+    log.info("Linhagem: curso_txt → alunos_raw")
+
+    # ── bronze → silver ──────────────────────────────────────────────────────
     metadata.add_lineage(AddLineageRequest(edge=EntitiesEdge(
         fromEntity=EntityReference(id=bronze.id, type="table"),
         toEntity=EntityReference(id=silver.id,   type="table"),
@@ -300,11 +381,12 @@ def registrar_lineage(**context):
     )))
     log.info("Linhagem: alunos_raw → alunos_transformado")
 
+    # ── silver → gold (4 tabelas) ────────────────────────────────────────────
     descricoes = {
-        "kpis_dashboard":      "Agregações por perfil e cálculo de KPIs.",
-        "analise_risco":       "Segmentação de risco de evasão por perfil.",
-        "analise_engajamento": "Cálculo de índices de engajamento.",
-        "insights":            "Geração de insights priorizados.",
+        "kpis_dashboard":      "Agregações por perfil e cálculo de 11 KPIs executivos.",
+        "analise_risco":       "Segmentação de risco de evasão por perfil e reprovações.",
+        "analise_engajamento": "Cálculo de índices de engajamento por dimensão.",
+        "insights":            "Geração de 6 insights priorizados (Alta/Média/Baixa).",
     }
     for nome, gold in gold_tables.items():
         metadata.add_lineage(AddLineageRequest(edge=EntitiesEdge(
@@ -314,13 +396,16 @@ def registrar_lineage(**context):
         )))
         log.info("Linhagem: alunos_transformado → %s", nome)
 
-    log.info("✅ Linhagem completa registrada.")
+    log.info("✅ Linhagem completa registrada (curso_txt → bronze → silver → 4 gold).")
 
 
 # ─── Task 3: Aplicar Governança ───────────────────────────────────────────────
 
 def aplicar_governanca(**context):
-    """Owner, tags PII/Tier e descrições em todas as tabelas."""
+    """
+    Owner, tags PII/Tier e descrições em todas as tabelas.
+    Inclui curso_txt com PII.Sensitive e Tier3 (dado externo/fonte).
+    """
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.api.classification.createTag import CreateTagRequest
     from metadata.generated.schema.api.classification.createClassification import CreateClassificationRequest
@@ -354,8 +439,13 @@ def aplicar_governanca(**context):
     owner_ref  = EntityReference(id=owner_user.id, type="user") if owner_user else None
 
     config = {
+        # Fonte CSV — raiz do grafo, contém PII (nomes dos alunos)
+        "curso_txt":           {"pii": True,  "tier": "Tier.Tier3", "descricao": "Arquivo CSV fonte do pipeline. Origem de todos os dados de alunos. Contém PII (NOME)."},
+        # Bronze — cópia fiel da fonte + metadados de ingestão
         "alunos_raw":          {"pii": True,  "tier": "Tier.Tier3", "descricao": "Dados brutos de alunos — camada Bronze. 199 registros. Contém PII."},
+        # Silver — dado tratado, ainda contém PII (NOME)
         "alunos_transformado": {"pii": True,  "tier": "Tier.Tier2", "descricao": "Dados tratados com colunas derivadas — camada Silver. 199 registros. Contém PII."},
+        # Gold — agregados, sem PII
         "kpis_dashboard":      {"pii": False, "tier": "Tier.Tier1", "descricao": "KPIs para dashboard executivo — camada Gold. 11 métricas."},
         "analise_risco":       {"pii": False, "tier": "Tier.Tier1", "descricao": "Risco de evasão por perfil — camada Gold. 7 registros."},
         "analise_engajamento": {"pii": False, "tier": "Tier.Tier1", "descricao": "Índices de engajamento — camada Gold. 8 registros."},
@@ -378,7 +468,7 @@ def aplicar_governanca(**context):
         except Exception as e:
             log.warning("Erro em %s: %s", nome, e)
 
-    log.info("✅ Governança aplicada.")
+    log.info("✅ Governança aplicada (7 tabelas, incluindo curso_txt).")
 
 
 # ─── Task 4: Registrar Glossário ─────────────────────────────────────────────
@@ -431,7 +521,8 @@ def registrar_glossario(**context):
 
 def vincular_glossario_colunas(**context):
     """
-    Vincula termos do Glossário Educação às colunas relevantes da tabela silver.
+    Vincula termos do Glossário Educação às colunas relevantes.
+    Inclui vínculo de PerfilAluno na tabela fonte (curso_txt).
     Aparece em: Governar > Glossário (coluna com termo vinculado).
     """
     from metadata.generated.schema.entity.data.table import Table
@@ -439,12 +530,16 @@ def vincular_glossario_colunas(**context):
     metadata = get_metadata_client()
 
     vinculos = [
+        # Silver — colunas derivadas
         {"tabela": "alunos_transformado", "coluna": "MEDIA_GERAL",        "termo": "Glossario_Educacao.MediaGeral"},
         {"tabela": "alunos_transformado", "coluna": "TAXA_PRESENCA",      "termo": "Glossario_Educacao.TaxaPresenca"},
         {"tabela": "alunos_transformado", "coluna": "INDICE_ENGAJAMENTO", "termo": "Glossario_Educacao.IndiceEngajamento"},
         {"tabela": "alunos_transformado", "coluna": "TOTAL_REPROVACOES",  "termo": "Glossario_Educacao.RiscoEvasao"},
-        {"tabela": "alunos_raw",          "coluna": "PERFIL",             "termo": "Glossario_Educacao.PerfilAluno"},
         {"tabela": "alunos_transformado", "coluna": "PERFIL",             "termo": "Glossario_Educacao.PerfilAluno"},
+        # Bronze
+        {"tabela": "alunos_raw",          "coluna": "PERFIL",             "termo": "Glossario_Educacao.PerfilAluno"},
+        # Fonte CSV — raiz do grafo
+        {"tabela": "curso_txt",           "coluna": "PERFIL",             "termo": "Glossario_Educacao.PerfilAluno"},
     ]
 
     for v in vinculos:
@@ -466,7 +561,7 @@ def vincular_glossario_colunas(**context):
         except Exception as e:
             log.warning("Erro ao vincular %s.%s: %s", v["tabela"], v["coluna"], e)
 
-    log.info("✅ Glossário vinculado às colunas.")
+    log.info("✅ Glossário vinculado às colunas (fonte, bronze, silver).")
 
 
 # ─── Task 6: Criar Domínio e Produto de Dados ─────────────────────────────────
@@ -483,7 +578,6 @@ def criar_dominio_produto(**context):
 
     metadata = get_metadata_client()
 
-    # Criar domínio
     dominio_nome = "Educacao"
     try:
         dominio = metadata.get_by_name(entity=Domain, fqn=dominio_nome)
@@ -504,7 +598,6 @@ def criar_dominio_produto(**context):
         log.warning("Erro ao criar domínio: %s", e)
         return
 
-    # Criar produto de dados com as 4 tabelas gold
     try:
         metadata.create_or_update(CreateDataProductRequest(
             name="analytics-desempenho-alunos",
@@ -669,8 +762,8 @@ with DAG(
     dag_id="7_catalog_openmetadata",
     default_args=default_args,
     description=(
-        "Cataloga tabelas, linhagem, governança, glossário, domínios, "
-        "métricas e alertas no OpenMetadata para o pipeline medallion."
+        "Cataloga tabelas (incluindo curso_txt fonte), linhagem completa, "
+        "governança, glossário, domínios, métricas e alertas no OpenMetadata."
     ),
     schedule=None,
     start_date=datetime(2024, 1, 1),
@@ -679,11 +772,11 @@ with DAG(
 ) as dag:
 
     t0 = PythonOperator(task_id="criar_servico_schema",       python_callable=criar_servico_schema,       doc_md="Cria serviço, database e schema.")
-    t1 = PythonOperator(task_id="registrar_tabelas",          python_callable=registrar_tabelas,          doc_md="Cria/atualiza 6 tabelas com schema completo.")
-    t2 = PythonOperator(task_id="registrar_lineage",          python_callable=registrar_lineage,          doc_md="Linhagem: bronze → silver → 4 gold.")
-    t3 = PythonOperator(task_id="aplicar_governanca",         python_callable=aplicar_governanca,         doc_md="Tags PII/Tier, owner e descrições.")
+    t1 = PythonOperator(task_id="registrar_tabelas",          python_callable=registrar_tabelas,          doc_md="Cria/atualiza 7 tabelas: curso_txt + 6 camadas medallion.")
+    t2 = PythonOperator(task_id="registrar_lineage",          python_callable=registrar_lineage,          doc_md="Linhagem: curso_txt → bronze → silver → 4 gold.")
+    t3 = PythonOperator(task_id="aplicar_governanca",         python_callable=aplicar_governanca,         doc_md="Tags PII/Tier, owner e descrições em 7 tabelas.")
     t4 = PythonOperator(task_id="registrar_glossario",        python_callable=registrar_glossario,        doc_md="5 termos no Glossário Educação.")
-    t5 = PythonOperator(task_id="vincular_glossario_colunas", python_callable=vincular_glossario_colunas, doc_md="Vincula termos às colunas da silver e bronze.")
+    t5 = PythonOperator(task_id="vincular_glossario_colunas", python_callable=vincular_glossario_colunas, doc_md="Vincula termos às colunas da fonte, bronze e silver.")
     t6 = PythonOperator(task_id="criar_dominio_produto",      python_callable=criar_dominio_produto,      doc_md="Domínio Educação + Produto de Dados gold.")
     t7 = PythonOperator(task_id="registrar_metrica_negocio",  python_callable=registrar_metrica_negocio,  doc_md="4 métricas de negócio em Governar > Métricas.")
     t8 = PythonOperator(task_id="criar_alertas",              python_callable=criar_alertas,              doc_md="3 alertas em Observabilidade > Alertas.")

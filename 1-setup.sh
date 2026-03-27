@@ -71,8 +71,12 @@ curl -X POST http://localhost:8080/api/v2/pools \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"name": "pipeline_pool", "slots": 8, "description": "Pool pipeline alunos"}'
 
-  
-# 7. Verificar status dos serviços
+# 7. Configurar token do OpenMetadata
+echo ""
+echo "Configurando token do OpenMetadata..."
+bash datapipeline/openmetadata/token.sh
+
+# 8. Verificar status dos serviços
 echo "Verificando status dos serviços..."
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
@@ -85,12 +89,4 @@ echo "- Airflow: http://$IP:8080 (usuário: admin, senha: admin)"
 echo "- OpenMetadata: http://$IP:8585 (usuário: admin@open-metadata.org, senha: admin)"
 echo ""
 echo ""
-echo "Acesse o Airflow e veja se aparecem as DAGs na ordem:"
-echo "0. dag_orquestrador"
-echo "1. bronze_ingestion"
-echo "2. bronze_test"
-echo "3. silver_transformation"
-echo "4. silver_test"
-echo "5. gold_aggregation"
-echo "6. gold_test"
-echo "7. catalog_metadata"
+echo "Acesse o Airflow e veja se aparecem as DAGs"

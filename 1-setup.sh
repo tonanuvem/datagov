@@ -7,23 +7,32 @@ echo ""
 # 1. Criar estrutura de diretórios
 echo "Criando estrutura de diretórios..."
 mkdir -p datapipeline/airflow/{dags,logs,plugins,config}
-mkdir -p datapipeline/openmetadata/data
+mkdir -p datapipeline/openmetadata/docker-volume/db-data-postgres
 mkdir -p dados/{bronze,silver,gold}
 
 
 # 2. Configurar permissões 
-echo "Configurando permissões do OpenMetadata..."
-chmod -R 777 datapipeline/openmetadata/data
+echo "Configurando permissões do PostgreSQL..."
+sudo chown -R 999:999 datapipeline/openmetadata/docker-volume/db-data-postgres
 echo "Configurando permissões do Airflow..."
 chmod -R 777 datapipeline/airflow/{logs,plugins}
 
 
 # 3. Inicializar banco de dados do OpenMetadata
-echo "Inicializando PostGres..."
-# Não precisa subir separado, o postgres.yml já inclui tudo
+echo "Verificando containers existentes..."
+docker ps -a | grep -q openmetadata_postgresql && docker rm -f openmetadata_postgresql 2>/dev/null || true
+docker ps -a | grep -q openmetadata_elasticsearch && docker rm -f openmetadata_elasticsearch 2>/dev/null || true
+docker ps -a | grep -q openmetadata_server && docker rm -f openmetadata_server 2>/dev/null || true
+docker ps -a | grep -q openmetadata_ingestion && docker rm -f openmetadata_ingestion 2>/dev/null || true
+docker ps -a | grep -q execute_migrate_all && docker rm -f execute_migrate_all 2>/dev/null || true
 
 # 4. Subir todos os serviços : Open Metadata e Ingestion Airflow
 echo "Subindo serviços..."
+echo "Aguardando PostgreSQL inicializar..."
+docker-compose -f datapipeline/openmetadata/docker-compose-postgres.yml up -d postgresql
+sleep 10
+
+echo "Subindo demais serviços..."
 docker-compose -f datapipeline/openmetadata/docker-compose-postgres.yml up -d
 
 

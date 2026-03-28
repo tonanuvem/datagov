@@ -8,7 +8,7 @@ OUTPUTS: /opt/nb/gold/kpis_dashboard.csv
          /opt/nb/gold/insights.csv
 
 Linhagem no OpenMetadata:
-  alunos_transformado ──► [3_gold_aggregation DAG] ──► kpis_dashboard
+  alunos_transformado ──► [5_gold_aggregation DAG] ──► kpis_dashboard
                                                     ──► analise_risco
                                                     ──► analise_engajamento
                                                     ──► insights
@@ -32,7 +32,7 @@ GOLD_DIR = "/opt/nb/gold"
 
 
 @dag(
-    dag_id="3_gold_aggregation",
+    dag_id="5_gold_aggregation",
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False,

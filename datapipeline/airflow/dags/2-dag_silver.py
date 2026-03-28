@@ -5,7 +5,7 @@ INPUTS:  /opt/nb/bronze/alunos_raw.csv
 OUTPUT:  /opt/nb/silver/alunos_transformado.csv
 
 Linhagem no OpenMetadata:
-  alunos_raw (Table) ──► [2_silver_transform DAG] ──► alunos_transformado (Table)
+  alunos_raw (Table) ──► [3_silver_transform DAG] ──► alunos_transformado (Table)
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ ASSET_SILVER = Asset(uri="openmetadata://pipeline_alunos.educacao.camadas.alunos
 
 
 @dag(
-    dag_id="2_silver_transform",
+    dag_id="3_silver_transform",
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False,

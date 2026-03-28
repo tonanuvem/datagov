@@ -3,7 +3,7 @@ DAG de Catalogação no OpenMetadata — Versão Didática Simplificada
 =================================================================
 Demonstra os conceitos principais de governança de dados:
 
-  1. buscar_token_bot        → login admin → pega JWT do IngestionBot via API
+  1. buscar_token_bot        → login admin (senha Base64) → pega JWT do IngestionBot via API
   2. registrar_tabelas       → cadastra as tabelas do pipeline medallion
   3. registrar_lineage       → curso_txt → bronze → silver → gold
   4. aplicar_governanca      → owner, tags PII/Tier e descrições
@@ -19,9 +19,9 @@ AUTENTICAÇÃO — Como configurar a Airflow Connection:
     Host          : openmetadata-server
     Port          : 8585
     Login         : admin@open-metadata.org
-    Password      : admin
+    Password      : admin          ← texto puro, o código faz o Base64
 
-  Ou via CLI:
+  Ou via CLI dentro do container:
     airflow connections add openmetadata_default \
         --conn-type http \
         --conn-host openmetadata-server \
@@ -29,9 +29,12 @@ AUTENTICAÇÃO — Como configurar a Airflow Connection:
         --conn-login "admin@open-metadata.org" \
         --conn-password "admin"
 
-  Fluxo de autenticação:
-    1. t0 faz POST /api/v1/users/login com login+senha da Connection
-    2. Recebe token temporário de admin
+  Ou via variável de ambiente no docker-compose.yml (mais robusto):
+    AIRFLOW_CONN_OPENMETADATA_DEFAULT: "http://admin%40open-metadata.org:admin@openmetadata-server:8585"
+
+  Fluxo de autenticação (OpenMetadata 1.12+):
+    1. t0 faz POST /api/v1/users/login com senha em Base64
+    2. Recebe accessToken temporário de admin
     3. Usa esse token para GET /api/v1/bots/name/ingestion-bot
     4. Busca o JWT permanente do IngestionBot
     5. Publica no XCom → todas as tasks seguintes usam esse JWT
@@ -49,6 +52,7 @@ Grafo de linhagem esperado no OpenMetadata:
 
 from __future__ import annotations
 
+import base64
 import logging
 from datetime import datetime
 
@@ -76,7 +80,7 @@ def get_om_base_url() -> str:
 
 
 def get_om_credentials() -> tuple[str, str]:
-    """Retorna (email, senha) da Airflow Connection."""
+    """Retorna (email, senha_em_texto_puro) da Airflow Connection."""
     conn = BaseHook.get_connection(OM_CONN_ID)
     if not conn.login or not conn.password:
         raise ValueError(
@@ -91,7 +95,7 @@ def get_om_credentials() -> tuple[str, str]:
 def get_client(ti=None):
     """
     Retorna cliente OpenMetadata autenticado.
-    Prioriza o JWT do IngestionBot via XCom (publicado pela t0).
+    Usa o JWT do IngestionBot publicado no XCom pela task buscar_token_bot.
     """
     from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
         OpenMetadataConnection,
@@ -149,8 +153,13 @@ def buscar_token_bot(**context):
     """
     Autentica como admin via usuário/senha e busca o JWT do IngestionBot.
 
+    IMPORTANTE — OpenMetadata 1.12+:
+      O endpoint /api/v1/users/login exige a senha codificada em Base64.
+      O código faz esse encode automaticamente a partir da senha em texto
+      puro armazenada na Airflow Connection.
+
     Passo a passo:
-      1. POST /api/v1/users/login  → token temporário de admin
+      1. POST /api/v1/users/login  (senha em Base64) → accessToken de admin
       2. GET  /api/v1/bots/name/ingestion-bot → dados do bot (botUser.id)
       3. GET  /api/v1/users/{id}/token        → JWT permanente do bot
       4. XCom push → tasks seguintes consomem via xcom_pull
@@ -158,14 +167,18 @@ def buscar_token_bot(**context):
     base_url = get_om_base_url()
     email, senha = get_om_credentials()
 
-    # ── 1. Login com usuário/senha → token temporário ─────────────────────────
-    log.info("🔐 Autenticando admin no OpenMetadata...")
+    # OpenMetadata 1.12+ exige a senha em Base64
+    senha_b64 = base64.b64encode(senha.encode()).decode()
+
+    # ── 1. Login → accessToken temporário de admin ────────────────────────────
+    log.info("🔐 Autenticando admin no OpenMetadata (senha Base64)...")
     resp_login = requests.post(
         f"{base_url}/v1/users/login",
-        json={"email": email, "password": senha},
+        json={"email": email, "password": senha_b64},
         timeout=30,
     )
     resp_login.raise_for_status()
+
     admin_token = resp_login.json()["accessToken"]
     log.info("✔ Login admin bem-sucedido.")
 
@@ -195,9 +208,8 @@ def buscar_token_bot(**context):
         timeout=30,
     )
     resp_token.raise_for_status()
-    token_data = resp_token.json()
 
-    jwt_token = token_data["JWTToken"]
+    jwt_token = resp_token.json()["JWTToken"]
     log.info("✔ JWT do IngestionBot obtido com sucesso.")
 
     # ── 4. Publica no XCom ────────────────────────────────────────────────────
@@ -211,6 +223,10 @@ def buscar_token_bot(**context):
 def registrar_tabelas(ti=None, **_):
     """
     Registra todas as tabelas do pipeline no catálogo.
+
+    Conceito: cada tabela vira um 'asset' no OpenMetadata com nome,
+    descrição e schema (colunas com tipos e descrições).
+    create_or_update é idempotente — pode rodar várias vezes sem duplicar.
     """
     from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
     from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
@@ -241,7 +257,7 @@ def registrar_tabelas(ti=None, **_):
 
     tabelas = [
 
-        # FONTE
+        # FONTE — CSV de origem, raiz do grafo de linhagem
         CreateTableRequest(
             name="curso_txt",
             displayName="Fonte: curso.txt (CSV)",
@@ -251,7 +267,7 @@ def registrar_tabelas(ti=None, **_):
             columns=_colunas_base(),
         ),
 
-        # BRONZE
+        # BRONZE — dados brutos + metadados de ingestão
         CreateTableRequest(
             name="alunos_raw",
             displayName="Alunos Raw (Bronze)",
@@ -264,7 +280,7 @@ def registrar_tabelas(ti=None, **_):
             ],
         ),
 
-        # SILVER
+        # SILVER — dados tratados + colunas derivadas
         CreateTableRequest(
             name="alunos_transformado",
             displayName="Alunos Transformado (Silver)",
@@ -286,7 +302,7 @@ def registrar_tabelas(ti=None, **_):
             ],
         ),
 
-        # GOLD
+        # GOLD — tabelas analíticas finais
         CreateTableRequest(
             name="kpis_dashboard",
             displayName="KPIs Dashboard (Gold)",
@@ -352,6 +368,9 @@ def registrar_tabelas(ti=None, **_):
 def registrar_lineage(ti=None, **_):
     """
     Registra o grafo de linhagem completo.
+
+    Conceito: linhagem mostra a origem e o destino dos dados,
+    permitindo análise de impacto e rastreabilidade.
     """
     from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
     from metadata.generated.schema.entity.data.table import Table
@@ -389,6 +408,12 @@ def registrar_lineage(ti=None, **_):
 def aplicar_governanca(ti=None, **_):
     """
     Aplica owner, tags de classificação (PII / Tier) e descrições.
+
+    Conceito: governança define quem é responsável pelos dados,
+    qual sua sensibilidade (PII) e importância (Tier).
+      - Tier1 = crítico para o negócio (tabelas Gold consumidas)
+      - Tier3 = dado de suporte / externo (fonte e Bronze)
+      - PII.Sensitive = contém dados pessoais identificáveis
     """
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.entity.teams.user import User
@@ -396,6 +421,7 @@ def aplicar_governanca(ti=None, **_):
 
     md = get_client(ti=ti)
 
+    # (pii, tier, descrição)
     config = {
         "curso_txt":           (True,  "Tier.Tier3", "CSV fonte. Raiz do pipeline. Contém PII (NOME)."),
         "alunos_raw":          (True,  "Tier.Tier3", "Bronze: dados brutos, 199 registros. Contém PII."),
@@ -433,6 +459,10 @@ def aplicar_governanca(ti=None, **_):
 def registrar_glossario(ti=None, **_):
     """
     Cria o Glossário de Educação e vincula termos às colunas Silver.
+
+    Conceito: o glossário traduz termos técnicos para linguagem de negócio
+    e vincula esses termos às colunas — facilitando a descoberta dos dados
+    por analistas e gestores não-técnicos.
     """
     from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
     from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
@@ -453,6 +483,7 @@ def registrar_glossario(ti=None, **_):
 
     ref = EntityReference(id=glossario.id, type="glossary")
 
+    # Termos de negócio: (nome, displayName, descrição)
     termos = [
         ("MediaGeral",        "Média Geral",           "Média aritmética das notas nas 4 matérias."),
         ("TaxaPresenca",      "Taxa de Presença",      "Percentual de presença em relação às horas totais."),
@@ -469,6 +500,7 @@ def registrar_glossario(ti=None, **_):
         except Exception as e:
             log.warning("⚠ Termo %s: %s", nome, e)
 
+    # Vínculos coluna ↔ termo glossário
     vinculos = [
         ("alunos_transformado", "MEDIA_GERAL",        f"{GLOSSARIO}.MediaGeral"),
         ("alunos_transformado", "TAXA_PRESENCA",      f"{GLOSSARIO}.TaxaPresenca"),
@@ -497,6 +529,9 @@ def registrar_glossario(ti=None, **_):
 def criar_dominio_produto(ti=None, **_):
     """
     Cria o Domínio 'Educação' e o Produto de Dados com as tabelas Gold.
+
+    Conceito: domínios organizam os assets por área de negócio.
+    Produtos de Dados agrupam tabelas prontas para consumo analítico.
     """
     from metadata.generated.schema.api.domains.createDataProduct import CreateDataProductRequest
     from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest

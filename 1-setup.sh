@@ -76,10 +76,13 @@ echo ""
 #echo "Configurando token do OpenMetadata..."
 #bash datapipeline/openmetadata/token.sh
 echo "Atualizar a Connection no Airflow para usar Login (admin@open-metadata.org) e Password (admin) — sem nenhum token"
-docker exec openmetadata_ingestion airflow connections add openmetadata_default --conn-type http --conn-host openmetadata-server --conn-port 8585 --conn-login "admin@open-metadata.org" --conn-password "admin"
+#docker exec openmetadata_ingestion airflow connections add openmetadata_default --conn-type http --conn-host openmetadata-server --conn-port 8585 --conn-login "admin@open-metadata.org" --conn-password "admin"
 echo "Confirmar a Connection no Airflow : openmetadata"
 docker exec openmetadata_ingestion airflow connections list 2>/dev/null | grep openmetadata
+docker exec openmetadata_ingestion airflow connections get openmetadata_default
 
+                                                                                                                                                                                             
+[ec2-user@vm-fiap datagov]$ 
 # 8. Verificar status dos serviços
 echo "Verificando status dos serviços..."
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"

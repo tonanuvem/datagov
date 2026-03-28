@@ -57,7 +57,7 @@ done
 echo " ✅"
 
 # 6. Configurar AirFlow : 8 slots separados, um para cada task das DAGs para usar slots independentes e nao travar
-echo "Configurando AiirFlow..."
+echo "Configurando AirFlow..."
 # Pegar o token JWT para autenticar na API v2
 TOKEN=$(curl -s -X POST http://localhost:8080/auth/token \
   -H "Content-Type: application/json" \

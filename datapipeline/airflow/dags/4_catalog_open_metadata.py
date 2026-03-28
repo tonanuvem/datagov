@@ -3,11 +3,12 @@ DAG de Catalogação no OpenMetadata — Versão Didática Simplificada
 =================================================================
 Demonstra os conceitos principais de governança de dados:
 
-  1. registrar_tabelas       → cadastra as tabelas do pipeline medallion
-  2. registrar_lineage       → curso_txt → bronze → silver → gold
-  3. aplicar_governanca      → owner, tags PII/Tier e descrições
-  4. registrar_glossario     → termos de negócio (Glossário Educação)
-  5. criar_dominio_produto   → Domínio Educação + Produto de Dados
+  1. buscar_token_bot        → login admin → pega JWT do IngestionBot via API
+  2. registrar_tabelas       → cadastra as tabelas do pipeline medallion
+  3. registrar_lineage       → curso_txt → bronze → silver → gold
+  4. aplicar_governanca      → owner, tags PII/Tier e descrições
+  5. registrar_glossario     → termos de negócio (Glossário Educação)
+  6. criar_dominio_produto   → Domínio Educação + Produto de Dados
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AUTENTICAÇÃO — Como configurar a Airflow Connection:
@@ -17,21 +18,23 @@ AUTENTICAÇÃO — Como configurar a Airflow Connection:
     Connection Type: HTTP
     Host          : openmetadata-server
     Port          : 8585
-    Password      : <seu JWT token>
+    Login         : admin@open-metadata.org
+    Password      : admin
 
   Ou via CLI:
     airflow connections add openmetadata_default \
         --conn-type http \
         --conn-host openmetadata-server \
         --conn-port 8585 \
-        --conn-password "<jwt_token>"
+        --conn-login "admin@open-metadata.org" \
+        --conn-password "admin"
 
-  Por que Connection e não variável de ambiente?
-  → O token fica criptografado no banco do Airflow (Fernet).
-  → Evita o erro "Not Authorized! The given token does not match
-    the current bot's token!" causado pela variável não estar
-    disponível no worker no momento da execução.
-  → Mesmo padrão usado para conexões com bancos e APIs externas.
+  Fluxo de autenticação:
+    1. t0 faz POST /api/v1/users/login com login+senha da Connection
+    2. Recebe token temporário de admin
+    3. Usa esse token para GET /api/v1/bots/name/ingestion-bot
+    4. Busca o JWT permanente do IngestionBot
+    5. Publica no XCom → todas as tasks seguintes usam esse JWT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Grafo de linhagem esperado no OpenMetadata:
@@ -49,13 +52,14 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+import requests
 from airflow import DAG
 from airflow.hooks.base import BaseHook
 from airflow.operators.python import PythonOperator
 
 # ─── Configuração ─────────────────────────────────────────────────────────────
 
-OM_CONN_ID = "openmetadata_default"   # ID da Airflow Connection
+OM_CONN_ID = "openmetadata_default"
 SERVICE    = "pipeline_alunos"
 DATABASE   = "educacao"
 SCHEMA     = "camadas"
@@ -64,31 +68,31 @@ FQN_BASE   = f"{SERVICE}.{DATABASE}.{SCHEMA}"
 log = logging.getLogger(__name__)
 
 
-# ─── Helper: lê credenciais da Airflow Connection ─────────────────────────────
+# ─── Helper: lê host e credenciais da Airflow Connection ──────────────────────
 
-def get_om_config() -> tuple[str, str]:
-    """
-    Lê host e JWT token da Airflow Connection 'openmetadata_default'.
-
-    Retorna (host_url, jwt_token).
-
-    Usando BaseHook.get_connection() o token é resolvido em tempo de
-    execução do worker — nunca em tempo de parsing da DAG —
-    evitando erros de autenticação por token ausente ou inválido.
-    """
+def get_om_base_url() -> str:
     conn = BaseHook.get_connection(OM_CONN_ID)
-    host = f"http://{conn.host}:{conn.port}/api"
-    token = conn.password
-    if not token:
+    return f"http://{conn.host}:{conn.port}/api"
+
+
+def get_om_credentials() -> tuple[str, str]:
+    """Retorna (email, senha) da Airflow Connection."""
+    conn = BaseHook.get_connection(OM_CONN_ID)
+    if not conn.login or not conn.password:
         raise ValueError(
-            f"JWT token não encontrado na Connection '{OM_CONN_ID}'. "
-            "Configure o campo Password com o token do OpenMetadata."
+            f"Login ou senha não encontrados na Connection '{OM_CONN_ID}'. "
+            "Configure os campos Login e Password."
         )
-    return host, token
+    return conn.login, conn.password
 
 
-def get_client():
-    """Retorna o cliente autenticado do OpenMetadata."""
+# ─── Helper: cliente autenticado com token do XCom ────────────────────────────
+
+def get_client(ti=None):
+    """
+    Retorna cliente OpenMetadata autenticado.
+    Prioriza o JWT do IngestionBot via XCom (publicado pela t0).
+    """
     from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
         OpenMetadataConnection,
     )
@@ -97,9 +101,20 @@ def get_client():
     )
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
-    host, token = get_om_config()
+    base_url = get_om_base_url()
+
+    if ti:
+        token = ti.xcom_pull(task_ids="buscar_token_bot", key="bot_jwt_token")
+        if not token:
+            raise ValueError(
+                "Token do IngestionBot não encontrado no XCom. "
+                "Verifique se a task 'buscar_token_bot' executou com sucesso."
+            )
+    else:
+        raise ValueError("TaskInstance (ti) não fornecido — impossível obter token do XCom.")
+
     return OpenMetadata(OpenMetadataConnection(
-        hostPort=host,
+        hostPort=base_url,
         authProvider="openmetadata",
         securityConfig=OpenMetadataJWTClientConfig(jwtToken=token),
     ))
@@ -128,17 +143,74 @@ def _colunas_base():
     ]
 
 
+# ─── Task 0: Buscar Token do IngestionBot ─────────────────────────────────────
+
+def buscar_token_bot(**context):
+    """
+    Autentica como admin via usuário/senha e busca o JWT do IngestionBot.
+
+    Passo a passo:
+      1. POST /api/v1/users/login  → token temporário de admin
+      2. GET  /api/v1/bots/name/ingestion-bot → dados do bot (botUser.id)
+      3. GET  /api/v1/users/{id}/token        → JWT permanente do bot
+      4. XCom push → tasks seguintes consomem via xcom_pull
+    """
+    base_url = get_om_base_url()
+    email, senha = get_om_credentials()
+
+    # ── 1. Login com usuário/senha → token temporário ─────────────────────────
+    log.info("🔐 Autenticando admin no OpenMetadata...")
+    resp_login = requests.post(
+        f"{base_url}/v1/users/login",
+        json={"email": email, "password": senha},
+        timeout=30,
+    )
+    resp_login.raise_for_status()
+    admin_token = resp_login.json()["accessToken"]
+    log.info("✔ Login admin bem-sucedido.")
+
+    headers = {
+        "Authorization": f"Bearer {admin_token}",
+        "Content-Type": "application/json",
+    }
+
+    # ── 2. Busca dados do IngestionBot ────────────────────────────────────────
+    log.info("🤖 Buscando dados do IngestionBot...")
+    resp_bot = requests.get(
+        f"{base_url}/v1/bots/name/ingestion-bot",
+        headers=headers,
+        timeout=30,
+    )
+    resp_bot.raise_for_status()
+    bot_data = resp_bot.json()
+
+    bot_user_id = bot_data["botUser"]["id"]
+    log.info("✔ IngestionBot user ID: %s", bot_user_id)
+
+    # ── 3. Busca JWT permanente do bot ────────────────────────────────────────
+    log.info("🔑 Buscando JWT do IngestionBot...")
+    resp_token = requests.get(
+        f"{base_url}/v1/users/{bot_user_id}/token",
+        headers=headers,
+        timeout=30,
+    )
+    resp_token.raise_for_status()
+    token_data = resp_token.json()
+
+    jwt_token = token_data["JWTToken"]
+    log.info("✔ JWT do IngestionBot obtido com sucesso.")
+
+    # ── 4. Publica no XCom ────────────────────────────────────────────────────
+    context["ti"].xcom_push(key="bot_jwt_token", value=jwt_token)
+    log.info("✅ Token publicado no XCom.")
+    return jwt_token
+
+
 # ─── Task 1: Registrar Tabelas ────────────────────────────────────────────────
 
-def registrar_tabelas(**_):
+def registrar_tabelas(ti=None, **_):
     """
     Registra todas as tabelas do pipeline no catálogo.
-
-    Conceito: cada tabela vira um 'asset' no OpenMetadata com nome,
-    descrição e schema (colunas com tipos e descrições).
-
-    Também garante que o serviço, database e schema existam antes
-    de tentar criar as tabelas (create_or_update é idempotente).
     """
     from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
     from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
@@ -153,7 +225,7 @@ def registrar_tabelas(**_):
         DatabaseServiceType,
     )
 
-    md = get_client()
+    md = get_client(ti=ti)
 
     # Hierarquia: Serviço → Database → Schema (idempotente)
     md.create_or_update(CreateDatabaseServiceRequest(
@@ -169,7 +241,7 @@ def registrar_tabelas(**_):
 
     tabelas = [
 
-        # FONTE — CSV de origem, raiz do grafo de linhagem
+        # FONTE
         CreateTableRequest(
             name="curso_txt",
             displayName="Fonte: curso.txt (CSV)",
@@ -179,7 +251,7 @@ def registrar_tabelas(**_):
             columns=_colunas_base(),
         ),
 
-        # BRONZE — dados brutos + metadados de ingestão
+        # BRONZE
         CreateTableRequest(
             name="alunos_raw",
             displayName="Alunos Raw (Bronze)",
@@ -192,7 +264,7 @@ def registrar_tabelas(**_):
             ],
         ),
 
-        # SILVER — dados tratados + colunas derivadas
+        # SILVER
         CreateTableRequest(
             name="alunos_transformado",
             displayName="Alunos Transformado (Silver)",
@@ -214,7 +286,7 @@ def registrar_tabelas(**_):
             ],
         ),
 
-        # GOLD — tabelas analíticas finais
+        # GOLD
         CreateTableRequest(
             name="kpis_dashboard",
             displayName="KPIs Dashboard (Gold)",
@@ -277,19 +349,16 @@ def registrar_tabelas(**_):
 
 # ─── Task 2: Registrar Linhagem ───────────────────────────────────────────────
 
-def registrar_lineage(**_):
+def registrar_lineage(ti=None, **_):
     """
     Registra o grafo de linhagem completo.
-
-    Conceito: linhagem mostra a origem e o destino dos dados,
-    permitindo análise de impacto e rastreabilidade.
     """
     from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
     from metadata.generated.schema.type.entityReference import EntityReference
 
-    md = get_client()
+    md = get_client(ti=ti)
 
     def ref(nome):
         t = md.get_by_name(entity=Table, fqn=f"{FQN_BASE}.{nome}")
@@ -317,23 +386,16 @@ def registrar_lineage(**_):
 
 # ─── Task 3: Aplicar Governança ───────────────────────────────────────────────
 
-def aplicar_governanca(**_):
+def aplicar_governanca(ti=None, **_):
     """
     Aplica owner, tags de classificação (PII / Tier) e descrições.
-
-    Conceito: governança define quem é responsável pelos dados,
-    qual sua sensibilidade (PII) e importância (Tier).
-      - Tier1 = crítico para o negócio (tabelas Gold consumidas)
-      - Tier3 = dado de suporte / externo (fonte e Bronze)
-      - PII.Sensitive = contém dados pessoais identificáveis
     """
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.entity.teams.user import User
     from metadata.generated.schema.type.entityReference import EntityReference
 
-    md = get_client()
+    md = get_client(ti=ti)
 
-    # (pii, tier, descrição)
     config = {
         "curso_txt":           (True,  "Tier.Tier3", "CSV fonte. Raiz do pipeline. Contém PII (NOME)."),
         "alunos_raw":          (True,  "Tier.Tier3", "Bronze: dados brutos, 199 registros. Contém PII."),
@@ -368,13 +430,9 @@ def aplicar_governanca(**_):
 
 # ─── Task 4: Registrar Glossário ─────────────────────────────────────────────
 
-def registrar_glossario(**_):
+def registrar_glossario(ti=None, **_):
     """
     Cria o Glossário de Educação e vincula termos às colunas Silver.
-
-    Conceito: o glossário traduz termos técnicos para linguagem de negócio
-    e vincula esses termos às colunas — facilitando a descoberta dos dados
-    por analistas e gestores não-técnicos.
     """
     from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
     from metadata.generated.schema.api.data.createGlossaryTerm import CreateGlossaryTermRequest
@@ -382,7 +440,7 @@ def registrar_glossario(**_):
     from metadata.generated.schema.entity.data.table import Table
     from metadata.generated.schema.type.entityReference import EntityReference
 
-    md = get_client()
+    md = get_client(ti=ti)
     GLOSSARIO = "Glossario_Educacao"
 
     glossario = md.get_by_name(entity=Glossary, fqn=GLOSSARIO)
@@ -395,7 +453,6 @@ def registrar_glossario(**_):
 
     ref = EntityReference(id=glossario.id, type="glossary")
 
-    # Termos de negócio: (nome, displayName, descrição)
     termos = [
         ("MediaGeral",        "Média Geral",           "Média aritmética das notas nas 4 matérias."),
         ("TaxaPresenca",      "Taxa de Presença",      "Percentual de presença em relação às horas totais."),
@@ -412,7 +469,6 @@ def registrar_glossario(**_):
         except Exception as e:
             log.warning("⚠ Termo %s: %s", nome, e)
 
-    # Vínculos coluna ↔ termo: (tabela, coluna, fqn_do_termo)
     vinculos = [
         ("alunos_transformado", "MEDIA_GERAL",        f"{GLOSSARIO}.MediaGeral"),
         ("alunos_transformado", "TAXA_PRESENCA",      f"{GLOSSARIO}.TaxaPresenca"),
@@ -438,18 +494,15 @@ def registrar_glossario(**_):
 
 # ─── Task 5: Criar Domínio e Produto de Dados ─────────────────────────────────
 
-def criar_dominio_produto(**_):
+def criar_dominio_produto(ti=None, **_):
     """
     Cria o Domínio 'Educação' e o Produto de Dados com as tabelas Gold.
-
-    Conceito: domínios organizam os assets por área de negócio.
-    Produtos de Dados agrupam tabelas prontas para consumo analítico.
     """
     from metadata.generated.schema.api.domains.createDataProduct import CreateDataProductRequest
     from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
     from metadata.generated.schema.entity.domains.domain import Domain, DomainType
 
-    md = get_client()
+    md = get_client(ti=ti)
 
     try:
         dominio = md.get_by_name(entity=Domain, fqn="Educacao")
@@ -501,10 +554,11 @@ with DAG(
     },
 ) as dag:
 
+    t0 = PythonOperator(task_id="buscar_token_bot",      python_callable=buscar_token_bot)
     t1 = PythonOperator(task_id="registrar_tabelas",     python_callable=registrar_tabelas)
     t2 = PythonOperator(task_id="registrar_lineage",     python_callable=registrar_lineage)
     t3 = PythonOperator(task_id="aplicar_governanca",    python_callable=aplicar_governanca)
     t4 = PythonOperator(task_id="registrar_glossario",   python_callable=registrar_glossario)
     t5 = PythonOperator(task_id="criar_dominio_produto", python_callable=criar_dominio_produto)
 
-    t1 >> t2 >> t3 >> t4 >> t5
+    t0 >> t1 >> t2 >> t3 >> t4 >> t5

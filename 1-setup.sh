@@ -73,8 +73,11 @@ curl -X POST http://localhost:8080/api/v2/pools \
 
 # 7. Configurar token do OpenMetadata
 echo ""
-echo "Configurando token do OpenMetadata..."
-bash datapipeline/openmetadata/token.sh
+#echo "Configurando token do OpenMetadata..."
+#bash datapipeline/openmetadata/token.sh
+echo "Atualizar a Connection no Airflow para usar Login (admin@open-metadata.org) e Password (admin) — sem nenhum token"
+docker exec openmetadata_ingestion airflow connections add openmetadata_default --conn-type http --conn-host openmetadata-server --conn-port 8585 --conn-login "admin@open-metadata.org" --conn-password "admin"
+#docker exec openmetadata_ingestion airflow connections get openmetadata_default
 
 # 8. Verificar status dos serviços
 echo "Verificando status dos serviços..."

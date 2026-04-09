@@ -80,9 +80,7 @@ echo "Atualizar a Connection no Airflow para usar Login (admin@open-metadata.org
 echo "Confirmar a Connection no Airflow : openmetadata"
 docker exec openmetadata_ingestion airflow connections list 2>/dev/null | grep openmetadata
 docker exec openmetadata_ingestion airflow connections get openmetadata_default
-
-                                                                                                                                                                                             
-[ec2-user@vm-fiap datagov]$ 
+ 
 # 8. Verificar status dos serviços
 echo "Verificando status dos serviços..."
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
